@@ -24,7 +24,7 @@ status: todo
 - [ ] T028 [P] [DbC] — Escrever teste falhando para [AC10] em `tests/transpiler/test_schema.py::test_list_caps_enforced` (constrói spec com `mcp_servers` de 11 itens, `http_tools` de 21, `tool_filter` de 51; cada um → `TranspilerError(code="E_TRANSPILER_SCHEMA")` citando campo e cap) — DbC: `AgentSpec.Invariant` (caps ADR-0008).
 - [ ] T029 [P] [DbC] — Escrever teste falhando para [AC11] em `tests/transpiler/test_schema.py::test_string_caps_enforced` (`name`/`description`/`instruction` com 501 chars; URL com 2049 chars → `E_TRANSPILER_SCHEMA` citando campo) — DbC: `AgentSpec.Invariant` e `McpServerSpec.Invariant` (caps de string ADR-0008).
 - [ ] T030 [P] [DbC] — Escrever teste falhando para [AC12] em `tests/transpiler/test_schema.py::test_spec_json_size_cap` (arquivo de 1.1 MB → `load_spec(path)` levanta `E_TRANSPILER_SCHEMA` mencionando "1 MB", sem tentar `json.loads`) — DbC: `load_spec.Pre` (cap de tamanho antes de parse).
-- [ ] T031 [P] — Escrever teste falhando para [AC13] em `tests/transpiler/test_cli.py::test_transpiler_error_serializes_to_canonical_shape` (invoca CLI com spec inválido, captura stderr, valida linhas `code`, `message`, `hint`, `path`, `context` e exit code ≠ 0 conforme ADR-0008).
+- [ ] T031 [P] — Escrever teste falhando para [AC13] em `tests/transpiler/test_errors.py::test_format_challenge_error_shape` (valida que `format_challenge_error(exc)` retorna dict com as 5 chaves `code`, `message`, `hint`, `path`, `context` — suporte ao shape canônico de ADR-0008). O teste CLI end-to-end (`test_cli.py::test_transpiler_error_serializes_to_canonical_shape`, validando stderr linha-a-linha e exit code ≠ 0) é **diferido para o Bloco 0002** (onde a CLI é implementada); este bloco só garante a função auxiliar que a CLI consumirá.
 
 ## Implementation (TDD GREEN)
 
@@ -37,8 +37,8 @@ status: todo
 
 ## Refactor (TDD REFACTOR)
 
-- [ ] T030 — Extrair helper `_format_validation_error(exc) -> str` se lógica de tradução PT-BR aparecer inline em T022; mover para `transpiler/errors.py`.
-- [ ] T031 — Revisar docstrings (Google style) em todas as funções públicas (GUIDELINES § 1); rodar `mypy --strict`.
+- [ ] T040 — Extrair helper `_format_validation_error(exc) -> str` se lógica de tradução PT-BR aparecer inline em T022; mover para `transpiler/errors.py`.
+- [ ] T041 — Revisar docstrings (Google style) em todas as funções públicas (GUIDELINES § 1); rodar `mypy --strict`.
 
 ## Evidence
 
@@ -46,4 +46,4 @@ status: todo
 
 ## Paralelismo
 
-Tarefas `[P]` (T004, T010–T016) podem rodar simultaneamente — arquivos de teste diferentes ou arquivos independentes. T017 é gate sequencial antes do GREEN. T020–T024 têm dependência sequencial (cada uma libera algum teste).
+Tarefas `[P]` (T004, T010–T016, T028–T031) podem rodar simultaneamente — arquivos de teste diferentes ou arquivos independentes. T017 é gate sequencial antes do GREEN. T020–T024 têm dependência sequencial (cada uma libera algum teste). T040–T041 são o bloco REFACTOR, rodam após GREEN. T090 (Evidence) roda por último, pelo qa-engineer.

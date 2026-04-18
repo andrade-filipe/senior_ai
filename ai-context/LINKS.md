@@ -68,8 +68,11 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 ## uv (gerenciador de dependências)
 
 - [oficial] https://docs.astral.sh/uv/ — documentação oficial.
+- [oficial] https://docs.astral.sh/uv/getting-started/installation/ — métodos de instalação (winget, PowerShell installer, pip); base do `ai-context/references/ENV_SETUP.md`.
+- [oficial] https://docs.astral.sh/uv/guides/install-python/ — `uv python install <version>` para gerenciar Python isolado; usado para trazer 3.12 sem poluir o sistema.
 - [oficial] https://docs.astral.sh/uv/concepts/projects/ — `pyproject.toml` por projeto + `uv.lock`.
 - [oficial] https://docs.astral.sh/uv/concepts/projects/workspaces/ — workspaces (opcional — auditoria 2026-04 confirmou viabilidade como melhoria futura; ver `DESIGN_AUDIT.md` C8).
+- [ref] https://github.com/astral-sh/python-build-standalone — distribuição Python standalone que o uv usa internamente em `uv python install`.
 - [blog] https://astral.sh/blog/uv — anúncio e motivação.
 
 ## Google Gemini (LLM)
