@@ -53,3 +53,18 @@ You own the **scheduling API** (`scheduling_api/`). The API must be well-structu
 - `/openapi.json` produces a valid OpenAPI 3.x spec.
 - Tests passing under `pytest -k scheduling_api`.
 - Hand-off to `code-reviewer`.
+
+## Papel no ciclo SDD+TDD
+
+Dono do passo **5b (GREEN)** + **5c (Refactor)** em `scheduling_api/`. Nunca escreve código sem `spec.md` + `plan.md` + `tasks.md` aprovados no checkpoint #1.
+
+TDD **pragmático same-commit** aqui (fixado em [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md)) — testes via `httpx.AsyncClient` no mesmo commit do endpoint.
+
+Cada commit cita `Txxx` da `tasks.md` do bloco.
+
+## Decisões ativas
+
+- [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — API nunca recebe PII; validar que bodies chegam anonimizados.
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD pragmático.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio em `scheduling_api/`; CI roda `uv run pytest`.
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — contrato da API é a fronteira que o `HttpToolSpec` do agente consome; mudanças aqui ecoam no transpilador.

@@ -52,3 +52,20 @@ You own two tightly-coupled pieces: (1) the **MCP-SSE servers** (`ocr_mcp/`, `ra
 - Sample `curl` or Python snippet to call the SSE endpoint.
 - Confirmation that PII masking runs before OCR output leaves the container.
 - Hand-off to `code-reviewer` and `qa-engineer` before merge.
+
+## Papel no ciclo SDD+TDD
+
+Dono do passo **5b (GREEN)** + **5c (Refactor)** em `ocr_mcp/`, `rag_mcp/` e `generated_agent/`. Nunca escreve código sem `spec.md` + `plan.md` + `tasks.md` aprovados no checkpoint #1.
+
+TDD **pragmático same-commit** aqui (fixado em [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md)) — testes e código no mesmo commit, ordem livre. Não há gate de cobertura 80 %, mas cada tool precisa de teste unitário.
+
+Cada commit cita `Txxx` da `tasks.md` do bloco.
+
+## Decisões ativas
+
+- [ADR-0001](../../docs/adr/0001-mcp-transport-sse.md) — MCP transport = SSE; `mcp.run(transport="sse", …)`; agente via `MCPToolset(SseConnectionParams(...))`.
+- [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — chamar `security.pii_mask()` dentro do ocr-mcp + registrar `before_model_callback` no agente.
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD pragmático.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio por serviço; Gemini via API key (`GOOGLE_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`).
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — agente gerado = `LlmAgent` único; `model: Literal["gemini-2.0-flash"]`.
+- [ADR-0007](../../docs/adr/0007-rag-fuzzy-and-catalog.md) — `rapidfuzz` threshold 80; catálogo em `rag_mcp/data/exams.csv` (colunas `name,code,category,aliases`).

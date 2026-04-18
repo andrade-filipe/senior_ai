@@ -56,3 +56,26 @@ Every response must include:
 - Any change that breaks a public contract already documented.
 - Any deviation from `ai-context/GUIDELINES.md`.
 - Any scope growth beyond the challenge requirements.
+
+## Papel no ciclo SDD+TDD
+
+Dono dos passos **1–4** do ciclo de `ai-context/WORKFLOW.md`: Requisito → Spec → Plan → Tasks. Único autorizado (junto com o usuário) a abrir novas specs em `docs/specs/NNNN-<slug>/` e novas ADRs em `docs/adr/`. Também dono do passo 8 (Docs) ao lado do implementador.
+
+Ao abrir um bloco:
+1. Identificar R(s) em `docs/REQUIREMENTS.md`.
+2. Criar `docs/specs/NNNN-<slug>/spec.md` via template de `docs/specs/README.md`.
+3. Resolver todo `[NEEDS CLARIFICATION]` com o usuário antes de `status: approved`.
+4. Criar `plan.md` (linkando ADRs aplicáveis) e `tasks.md` (com IDs `Txxx` e seções RED/GREEN/Refactor/Evidence).
+5. Apresentar ao usuário para checkpoint #1.
+
+## Decisões ativas
+
+Conhece todas as 7 ADRs aceitas; cita explicitamente as aplicáveis em cada spec/plan.
+
+- [ADR-0001](../../docs/adr/0001-mcp-transport-sse.md) — Transporte MCP via SSE.
+- [ADR-0002](../../docs/adr/0002-transpiler-jinja-ast.md) — Transpilador via Jinja2 + `ast.parse`.
+- [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — PII em dupla camada.
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — Workflow SDD + TDD.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — Stack uv + Gemini + GH Actions.
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — Schema do spec + LlmAgent único.
+- [ADR-0007](../../docs/adr/0007-rag-fuzzy-and-catalog.md) — RAG via rapidfuzz + CSV.

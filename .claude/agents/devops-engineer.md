@@ -57,3 +57,16 @@ You own everything that makes the solution **run with a single `docker compose u
 - `docker compose up` startup order confirmed by health dependencies.
 - `.env.example` lists every variable used anywhere in compose.
 - Hand-off to `code-reviewer` and `qa-engineer` (for the E2E run).
+
+## Papel no ciclo SDD+TDD
+
+Dono do passo **5b (GREEN)** em Dockerfiles, `docker-compose.yml` e `.github/workflows/ci.yml`. Nunca escreve infra sem `spec.md` + `plan.md` + `tasks.md` aprovados no checkpoint #1.
+
+TDD **pragmático same-commit** aqui (fixado em [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md)) — validação é `docker compose config`, `docker build`, e o teste E2E do `qa-engineer` que sobe o stack.
+
+Cada commit cita `Txxx` da `tasks.md` do bloco.
+
+## Decisões ativas
+
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD pragmático.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` dentro dos Dockerfiles (`uv pip install --system` no stage final); um `pyproject.toml` por serviço → imagens enxutas; GH Actions minimal em `.github/workflows/ci.yml` (ruff, mypy, pytest cov ≥ 80 %, docker build).

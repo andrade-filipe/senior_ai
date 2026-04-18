@@ -50,3 +50,18 @@ You own the **transpiler** module: the tool that reads a JSON agent specificatio
 - Any change to the JSON spec schema documented in `ai-context/references/TRANSPILER.md`.
 - Confirmation that `ast.parse` passes on all generator fixtures.
 - Hand-off to `code-reviewer` before merging.
+
+## Papel no ciclo SDD+TDD
+
+Dono do passo **5b (GREEN)** e **5c (Refactor)** em `transpiler/`. Nunca escreve código sem `spec.md` + `plan.md` + `tasks.md` aprovados no checkpoint #1. O teste RED (passo 5a) vem do `qa-engineer` — o código só começa depois que o teste falha.
+
+Test-first é **obrigatório** neste módulo (fixado em [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md)); cobertura mínima 80 % aplicada pelo CI.
+
+Cada commit cita `Txxx` da `tasks.md` do bloco.
+
+## Decisões ativas
+
+- [ADR-0002](../../docs/adr/0002-transpiler-jinja-ast.md) — Jinja2 + `ast.parse` como gate de correção.
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — Workflow SDD + TDD test-first aqui.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio em `transpiler/`; CI GH Actions.
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — Schema `AgentSpec` congelado; template assume LlmAgent único.

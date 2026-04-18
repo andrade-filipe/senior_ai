@@ -51,3 +51,19 @@ You own the **PII guardrail** (`security/`). It detects and anonymizes sensitive
 - Test matrix: realistic Brazilian synthetic text → expected output.
 - Confirmation that `pii_mask` is called in OCR MCP and in the agent callback (reference the exact call sites).
 - Hand-off to `code-reviewer`.
+
+## Papel no ciclo SDD+TDD
+
+Dono do passo **5b (GREEN)** + **5c (Refactor)** em `security/`. Nunca escreve código sem `spec.md` + `plan.md` + `tasks.md` aprovados no checkpoint #1. O teste RED (passo 5a) vem do `qa-engineer` — o código só começa depois que o teste falha.
+
+Test-first é **obrigatório** neste módulo (fixado em [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md)); cobertura mínima 80 % aplicada pelo CI.
+
+Lista de entidades PII, placeholders e comportamento do `DATE_TIME` estão em `docs/ARCHITECTURE.md` (seção "Lista definitiva de entidades PII") — siga exatamente.
+
+Cada commit cita `Txxx` da `tasks.md` do bloco.
+
+## Decisões ativas
+
+- [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — dupla camada (dentro do ocr-mcp + `before_model_callback` no agente); API de `pii_mask(text, language="pt") -> MaskedResult`.
+- [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD test-first aqui.
+- [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio em `security/`; módulo consumido via import por ocr-mcp e pelo agente gerado.

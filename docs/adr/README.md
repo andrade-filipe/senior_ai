@@ -4,10 +4,15 @@ Registros de decisões arquiteturais aceitas ao longo do desenvolvimento. ADRs s
 
 ## Índice
 
-*(nenhuma ADR aceita ainda — o projeto está na fase de preparação)*
-
 | # | Título | Status | Data |
 |---|---|---|---|
+| [0001](0001-mcp-transport-sse.md) | Transporte MCP via SSE | accepted | 2026-04-18 |
+| [0002](0002-transpiler-jinja-ast.md) | Transpilador JSON → Python via Jinja2 + `ast.parse` | accepted | 2026-04-18 |
+| [0003](0003-pii-double-layer.md) | PII mascarada em dupla camada (OCR + `before_model_callback`) | accepted | 2026-04-18 |
+| [0004](0004-sdd-tdd-workflow.md) | Workflow SDD + TDD pragmático | accepted | 2026-04-18 |
+| [0005](0005-dev-stack.md) | Stack de desenvolvimento (uv + Gemini + GitHub Actions) | accepted | 2026-04-18 |
+| [0006](0006-spec-schema-and-agent-topology.md) | Schema do JSON spec + topologia do agente gerado | accepted | 2026-04-18 |
+| [0007](0007-rag-fuzzy-and-catalog.md) | RAG MCP via rapidfuzz + catálogo CSV | accepted | 2026-04-18 |
 
 ## Quando abrir uma ADR
 
