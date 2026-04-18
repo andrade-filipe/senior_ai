@@ -1,0 +1,54 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.eggs/
+*.egg-info/
+*.egg
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# --- Env / secrets ---
+.env
+.env.*
+!.env.example
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Claude Code (local to each developer) ---
+.claude/settings.local.json
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Docker ---
+# (no files to ignore by default; keep Dockerfiles and compose files)
+
+# --- Generated agent outputs (opt-in; comment if you want them committed) ---
+generated_agent/dist/
+generated_agent/__pycache__/
+
+# --- Evidence captures are kept in git by default; uncomment next line to opt out ---
+# docs/EVIDENCE/
+
+# --- Personal / user-only (never committed) ---
+/notes.md
+*.pdf
