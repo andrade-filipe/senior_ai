@@ -92,6 +92,19 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 - [blog] https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/ — introdução ao spec-kit no blog GitHub.
 - [ref] https://martinfowler.com/articles/exploring-gen-ai/sdd-tools.html — análise de Martin Fowler sobre ferramentas SDD.
 
+## Agentic patterns (livros e artigos — pesquisa 2026-04-18)
+
+Pesquisa consolidada em [`references/AGENTIC_PATTERNS.md`](references/AGENTIC_PATTERNS.md). Livros pagos; consultamos índices, amostras, reviews e posts complementares dos autores.
+
+- [ref] https://www.packtpub.com/en-us/product/agentic-design-patterns-9781836200628 — Antonio Gulli, *Agentic Design Patterns: A Hands-On Guide to Building Intelligent Systems* (Packt, 2025). Fonte de: Reflection, Tool Use, Planning, Multi-Agent Collaboration, Orchestrator-Worker.
+- [ref] https://www.oreilly.com/library/view/ai-engineering/9781098166298/ — Chip Huyen, *AI Engineering: Building Applications with Foundation Models* (O'Reilly, 2025). Fonte de: plataforma GenAI em camadas, classificação de tools (knowledge/capability/write-action), stream completion risk, guardrails.
+- [blog] https://huyenchip.com/2025/01/07/agents.html — post "Agents" de Chip Huyen (janeiro 2025); complementar ao livro, trata patterns de agent failure.
+- [blog] https://huyenchip.com/2024/07/25/genai-platform.html — post "Building A Generative AI Platform" (julho 2024); estrutura de camadas adotada no `ARCHITECTURE.md § Camadas conscientemente omitidas`.
+- [ref] https://www.oreilly.com/library/view/generative-ai-design/9781098182014/ — Valliappa Lakshmanan & Hannes Hapke, *Generative AI Design Patterns: Solutions to Common Challenges When Building GenAI Agents and Applications* (O'Reilly, 2025). Fonte de: Basic RAG, Assembled Reformat, Trustworthy Generation com citations, LLM-as-Judge, Dependency Injection, Guardrails.
+- [blog] https://www.sitepoint.com/ai-agent-design-patterns-2026/ — SitePoint 2026, síntese prática de padrões agentic (referência cruzada para o glossário).
+- [blog] https://machinelearningmastery.com/agentic-ai-roadmap-2026/ — Machine Learning Mastery, roadmap 2026 de agentic AI (util para priorizar backlog de Bloco 6).
+- [util] tweet @AndrewYNg (2025): "agentic workflows > bigger models" — justificativa para focar em patterns em vez de trocar modelo.
+
 ## Outras
 
 *(uso pontual — marcar com `[util]`)*

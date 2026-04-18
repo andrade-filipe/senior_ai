@@ -43,6 +43,14 @@ O módulo `security/` expõe uma única função pública `pii_mask(text, langua
 - **Negativas**: 2× CPU de Presidio no caminho OCR→agente; custo aceitável dado o tamanho dos textos envolvidos.
 - **Impacto**: `security-engineer` garante a função determinística; `adk-mcp-engineer` registra o callback no template do `generated_agent`; `code-reviewer` reprova commit que emita texto via OCR sem passar pelo mask.
 
+### Trade-off: mascaramento irreversível
+
+Chip Huyen (*AI Engineering*, cap. 5) descreve uma alternativa: substituir PII por placeholders **reversíveis** (mapping `{"<PERSON_1>": "João da Silva"}` guardado fora do prompt), de modo que a resposta final do agente possa ser des-anonimizada para o usuário. Essa abordagem preserva personalização, mas **exige** que o mapping viva em algum storage — o que contradiz a exigência do `docs/DESAFIO.md` de não persistir PII. Decisão: o mascaramento é **irreversível**; o agente nunca "re-humaniza" a saída. Consequência prática: a tabela final mostrada ao usuário contém `<PERSON>`, `<CPF>` etc. Se o avaliador pedir saída humanizada, isso vira ADR nova.
+
+### Risco operacional: stream completion
+
+Huyen (*cap. 6* — guardrails) alerta que PII guards aplicados só ao prompt **não** cobrem a resposta do LLM. O Gemini pode gerar PII por alucinação (ex.: inventar um CPF plausível no texto de confirmação). Em modo streaming, tokens saem antes de o guard pós-resposta ter chance de inspecionar. Mitigação adotada: o template do `generated_agent` desativa streaming (`run_live=False` / equivalente ADK) no MVP; qualquer retorno do LLM passa íntegro pelo `after_model_callback` (opcional, Bloco 6) antes de chegar ao usuário. Adoção plena de guardrails de saída está no backlog — ver `ai-context/references/AGENTIC_PATTERNS.md § 2`.
+
 ## Referências
 
 - `docs/DESAFIO.md` — seção "Camada de Segurança (PII)"

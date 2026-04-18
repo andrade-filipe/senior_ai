@@ -206,9 +206,24 @@ O `code-reviewer` recusa PRs em que algum elo da cadeia esteja faltando.
 - `qa-engineer` escreve os testes da seção RED antes do código ser escrito.
 - `code-reviewer` valida no checkpoint.
 
+## Vocabulário de patterns
+
+Specs e ADRs podem referenciar patterns arquiteturais por nome curto quando o termo já é padrão na literatura. Glossário consolidado em [`ai-context/references/AGENTIC_PATTERNS.md § 6`](../../ai-context/references/AGENTIC_PATTERNS.md). Termos aceitos:
+
+- **plan-then-execute** — agente produz passos antes de chamar tools (Gulli, cap. 2).
+- **assembled reformat** — pipeline determinístico pós-LLM que reformata saída (Lakshmanan, cap. 3).
+- **trustworthy generation with citations** — resposta do agente cita origem de cada fato (Lakshmanan, cap. 5).
+- **parameter inspection** — validar argumentos de tool antes da chamada; permitir correção.
+- **tool categorization (knowledge / capability / write-action)** — Huyen, cap. 6.
+- **dupla camada de guardrails** — PII no OCR + `before_model_callback`; ADR-0003.
+- **orchestrator-worker** — um LLM coordena sub-agentes determinísticos (Gulli, cap. 7). *Não adotado no MVP* — ver ADR-0006.
+
+Usar o termo curto no spec e deixar o link para `AGENTIC_PATTERNS.md` fazer o trabalho de explicar.
+
 ## Referências
 
 - [ADR-0004 — SDD + TDD pragmático](../adr/0004-sdd-tdd-workflow.md)
 - [ai-context/WORKFLOW.md](../../ai-context/WORKFLOW.md)
+- [ai-context/references/AGENTIC_PATTERNS.md](../../ai-context/references/AGENTIC_PATTERNS.md) — vocabulário de patterns
 - [GitHub spec-kit](https://github.com/github/spec-kit)
 - [spec-driven.md](https://github.com/github/spec-kit/blob/main/spec-driven.md)

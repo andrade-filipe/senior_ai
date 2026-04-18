@@ -308,6 +308,28 @@ Campos obrigatórios:
 - `event` segue dot.notation: `tool.called`, `tool.failed`, `http.request`, `pii.masked`, `transpiler.parsed`.
 - `extra` é livre, mas **nunca** contém PII crua — apenas prefixos sha256 ou contadores.
 
+## Classificação das tools
+
+Seguindo a taxonomia de Chip Huyen (*AI Engineering*, cap. 6) — útil para discutir risco, cache e auditoria:
+
+| Tool | Categoria | Observações |
+|---|---|---|
+| `extract_exams_from_image` (ocr-mcp) | **knowledge** (leitura) | Lê pedido médico. PII mascarada na saída. Idempotente. |
+| `search_exam_code` / `list_exams` (rag-mcp) | **knowledge** (leitura) | Consulta catálogo estático. Sem efeitos colaterais. |
+| `POST /api/v1/appointments` (scheduling-api) | **write-action** | Única tool com efeito colateral observável pelo mundo. Toda chamada gera log `event=http.request` com `correlation_id` + hash do payload. |
+| `GET /api/v1/appointments/...` (scheduling-api) | **knowledge** | Listagem/leitura, seguras para retry. |
+
+Implicação operacional: só uma tool (`POST /appointments`) muda estado. Isso delimita o raio de explosão de um prompt-injection bem-sucedido — o agente gerado não pode enviar e-mail, deletar arquivo, executar código arbitrário. Reforça a escolha de PII em dupla camada (ADR-0003) e dispensa um "human-in-the-loop approval" para cada write no MVP (Huyen recomenda para agentes com múltiplas writes heterogêneas — não é nosso caso).
+
+## Camadas conscientemente omitidas
+
+A plataforma GenAI que Chip Huyen descreve (*AI Engineering*, cap. 10) tem seis camadas: Context, Guardrails, Router, Cache, Logic, Observability. Adotamos quatro; rejeitamos duas:
+
+- **Router / gateway de modelos** — não adotado. Temos **um** modelo (`gemini-2.5-flash`, ADR-0005). Router faz sentido quando roteia entre Gemini/OpenAI/Claude por custo ou especialidade; para este desafio seria complexidade sem retorno. Consequência: modelo fixado via `Literal` no schema; trocar exige ADR nova.
+- **Cache semântico** — não adotado. O RAG já é determinístico (catálogo estático + rapidfuzz) e o OCR é mock. Cache de chamadas LLM exigiria camada extra sem ganho mensurável no MVP; pode virar ADR nova se a avaliação exigir métrica de latência.
+
+As outras quatro camadas estão presentes: **Context** (MCP servers), **Guardrails** (PII dupla camada + validação Pydantic), **Logic** (LlmAgent único, ADR-0006), **Observability** (logs estruturados JSON com `correlation_id`).
+
 ## Decisões principais
 
 Registradas em [`docs/adr/`](adr/README.md):

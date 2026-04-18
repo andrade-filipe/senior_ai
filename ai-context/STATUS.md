@@ -27,7 +27,7 @@ Próxima fase: **Implementação (Bloco 1)**.
 | 3. Servidores MCP OCR/RAG (mock, SSE) | `planned` | adk-mcp-engineer | R02, R03, R11 | ADR-0001 (SSE) + ADR-0007 (rapidfuzz + CSV). |
 | 4. API FastAPI de agendamento + Swagger | `planned` | fastapi-engineer | R04 | Contrato em `docs/ARCHITECTURE.md`. |
 | 5. Camada PII (Presidio + BR recognizers) | `planned` | security-engineer | R05 | ADR-0003 (dupla camada). Test-first obrigatório. |
-| 6. Agente ADK end-to-end | `planned` | adk-mcp-engineer | R06 | ADR-0006 (LlmAgent único). Consome (3), (4), (5). |
+| 6. Agente ADK end-to-end | `planned` | adk-mcp-engineer | R06 | ADR-0006 (LlmAgent único). Consome (3), (4), (5). Instruction deve incorporar backlog de patterns em `ai-context/references/AGENTIC_PATTERNS.md § 2` (plan-then-execute, parameter inspection, trustworthy citations, retry/fallback). |
 | 7. Dockerfiles + `docker-compose.yml` | `planned` | devops-engineer | R07 | `uv pip install --system` (ADR-0005). |
 | 8. E2E + evidências + README + Transparência | `planned` | qa-engineer + software-architect | R08, R09, R10, R12 | Última fase; fecha o desafio. |
 
