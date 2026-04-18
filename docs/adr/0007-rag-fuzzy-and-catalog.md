@@ -67,6 +67,10 @@ def list_exams(limit: int = 100) -> list[ExamSummary]: ...
 
 Conteúdo do CSV (≥ 100 entradas) é produzido no bloco de implementação do RAG MCP (não nesta fase). Estrutura fica congelada aqui.
 
+### Fonte do dataset
+
+Derivado de **SIGTAP** (Sistema de Gerenciamento da Tabela de Procedimentos do SUS — DATASUS, domínio público), filtrado para ≥ 120 exames laboratoriais e de imagem comuns. Fallback: **TUSS** (ANS, ODS público em `dados.gov.br`). O engenheiro do Bloco 3 escolhe entre baixar `.txt` oficial DATASUS ou usar conversão CSV comunitária MIT (`rdsilva/SIGTAP`); em qualquer caso registra URL + data em `ai-context/LINKS.md`. **Restrição absoluta**: nenhum dado de paciente — apenas nomenclatura e códigos. LOINC e CBHPM foram descartados (licença friction / redistribuição restrita).
+
 ## Consequências
 
 - **Positivas**: latência sub-milissegundo; dataset versionado e diff-friendly; avaliador pode inspecionar/editar o CSV; sem dependências pesadas em produção.
@@ -79,3 +83,6 @@ Conteúdo do CSV (≥ 100 entradas) é produzido no bloco de implementação do 
 - https://maxbachmann.github.io/RapidFuzz/
 - `docs/ARCHITECTURE.md` — seção "Assinaturas exatas das tools MCP"
 - `ai-context/references/MCP_SSE.md`
+- `ai-context/LINKS.md` § "Catálogos de nomenclatura médica (BR)" — SIGTAP, TUSS, LOINC (rejeitado).
+
+> Editado em 2026-04-18 durante fase pré-implementação: adicionada subseção "Fonte do dataset" fixando SIGTAP (primária) + TUSS (fallback) como origens públicas sem PII; LOINC/CBHPM registrados como descartados por licença. Sem mudança de mérito arquitetural — refinamento operacional permitido inline conforme `ai-context/references/DESIGN_AUDIT.md`.

@@ -286,6 +286,114 @@ Cada módulo define uma exceção-base e códigos estáveis. Códigos **não** s
 
 Toda exceção propagada herda de `ChallengeError(Exception)` com atributos `code: str`, `message: str`, `hint: str | None`.
 
+## Robustez e guardrails
+
+Política cross-service congelada em [ADR-0008](adr/0008-robust-validation-policy.md). Esta seção **instancia** as tabelas normativas — caps, timeouts, shape de erro — para consulta rápida pelos engenheiros de bloco. Divergência entre este documento e ADR-0008 é bug de processo e resolve-se primeiro na ADR, depois aqui.
+
+### Códigos de erro consolidados
+
+Tabela-mestre `E_*`. Reuso proibido. Novo código exige PR que atualize esta tabela + ADR-0008 antes do uso em código.
+
+| Código | Módulo dono | Condição disparadora | Mensagem canônica (PT-BR) | Hint |
+|---|---|---|---|---|
+| `E_TRANSPILER_SCHEMA` | transpiler | `spec.json` não valida contra `AgentSpec`; campos fora do schema; caps de lista/string estourados | "Campo `<path>` inválido: `<motivo>`" | "Verifique o arquivo `spec.json` contra `docs/ARCHITECTURE.md § Schema Pydantic`" |
+| `E_TRANSPILER_RENDER` | transpiler | Erro ao renderizar template Jinja2; `output_dir` fora do projeto | "Falha ao renderizar `<template>`" | "Inspecione `output_dir` e template" |
+| `E_TRANSPILER_RENDER_SIZE` | transpiler | Arquivo gerado > 100 KB (ex.: `agent.py` patológico) | "Arquivo gerado excede 100 KB" | "Revise o spec — instruction ou listas de tools grandes demais" |
+| `E_TRANSPILER_SYNTAX` | transpiler | `ast.parse` rejeita saída do template | "Template produziu Python inválido em `<file>`" | "Abra issue — transpilador produziu código inválido" |
+| `E_OCR_IMAGE_TOO_LARGE` | ocr_mcp | `image_base64` decoded > 5 MB | "Imagem > 5 MB não suportada" | "Comprima ou reduza a imagem antes de enviar" |
+| `E_OCR_INVALID_INPUT` | ocr_mcp | `image_base64` não é base64 válido | "`image_base64` não é base64 válido" | "Codifique a imagem em base64 padrão (RFC 4648)" |
+| `E_OCR_TIMEOUT` | ocr_mcp | OCR tool call > 5 s | "OCR não respondeu em 5 s" | "Verifique se `ocr-mcp` está saudável (`docker compose ps`)" |
+| `E_RAG_NO_MATCH` | rag_mcp | Nenhum candidato ≥ threshold 80/100 (rapidfuzz) | "Nenhum match ≥ 80% para `<exam_name>`" | "Veja `list_exams(limit=5)` para sugestões próximas" |
+| `E_RAG_QUERY_TOO_LARGE` | rag_mcp | Query `exam_name` > 500 chars | "`exam_name` excede 500 chars" | "Envie apenas o nome do exame, sem contexto extra" |
+| `E_RAG_QUERY_EMPTY` | rag_mcp | Query vazia ou só whitespace após `.strip()` | "`exam_name` está vazia" | "Envie o nome do exame" |
+| `E_RAG_TIMEOUT` | rag_mcp | RAG tool call > 2 s | "RAG não respondeu em 2 s" | "Verifique se `rag-mcp` está saudável" |
+| `E_CATALOG_LOAD_FAILED` | rag_mcp | CSV com BOM, linha em branco, encoding não-UTF-8, `code` duplicado | "Falha ao carregar catálogo: `<detalhe>` na linha `<N>`" | "Inspecione `rag_mcp/data/exams.csv`" |
+| `E_PII_ENGINE` | security | Presidio / spaCy falha ao inicializar | "Motor PII não inicializou" | "Verifique dependências: `uv run python -m spacy download pt_core_news_lg`" |
+| `E_PII_LANGUAGE` | security | Idioma fora de `{pt, en}` | "Idioma `<lang>` não suportado" | "Use `pt` ou `en`" |
+| `E_PII_TEXT_SIZE` | security | `text` > 100 KB em `pii_mask` | "Texto excede 100 KB" | "Divida em chunks menores ou reduza o input" |
+| `E_PII_ALLOW_LIST_SIZE` | security | `allow_list` > 1000 itens | "`allow_list` excede 1000 itens" | "Revise a lista — use categorias canônicas" |
+| `E_API_NOT_FOUND` | scheduling_api | Recurso não existe (GET /{id}) | "Agendamento `<id>` não encontrado" | "Confirme o ID" |
+| `E_API_VALIDATION` | scheduling_api | Body/query inválido; `patient_ref` fora do pattern; `exams[]` vazio/duplicado; `scheduled_for` no passado/naive; caps | "Campo `<path>` inválido: `<motivo>`" | "Consulte `/docs` para o contrato" |
+| `E_API_TIMEOUT` | scheduling_api | Request > 10 s | "API não respondeu em 10 s" | "Verifique se `scheduling-api` está saudável" |
+| `E_MCP_TIMEOUT` | generated_agent | MCP tool call > timeout do serviço (ver tabela Timeouts) | "MCP `<server>` não respondeu no timeout" | "Verifique se o serviço subiu (`docker compose ps`)" |
+| `E_MCP_TOOL_NOT_FOUND` | generated_agent | Tool inexistente no servidor | "Tool `<name>` não existe em `<server>`" | "Verifique `tool_filter` no spec" |
+| `E_AGENT_TIMEOUT` | generated_agent | Execução total do agente > 300 s | "Agente excedeu 300 s" | "Inspecione logs; reinicie stack" |
+| `E_AGENT_OUTPUT_INVALID` | generated_agent | LLM retorna resposta não-estruturada após a tabela ASCII esperada | "Saída do agente não conforme esperado" | "Revise `instruction`; inspecione `response_id` nos logs" |
+
+### Shape canônico da resposta de erro
+
+Toda exceção `ChallengeError` serializa para:
+
+```json
+{
+  "code": "E_API_VALIDATION",
+  "message": "patient_ref inválido",
+  "hint": "Use padrão ^anon-[a-z0-9]+$",
+  "path": "body.patient_ref",
+  "context": {"received": "João Silva", "expected_pattern": "^anon-..."}
+}
+```
+
+Variantes por transporte:
+
+- **HTTP** (FastAPI 4xx/5xx body): `{"error": {<shape>}, "correlation_id": "<uuid>"}`.
+- **CLI** (transpilador, agente): shape impresso em stderr (uma linha por campo); exit code ≠ 0 conforme categoria (1 schema, 2 render, 3 syntax, etc.).
+- **Log JSON**: shape + `timestamp`, `service`, `correlation_id`, `event=error.raised`.
+
+`hint` obrigatório quando o usuário consegue agir. `context` **nunca** carrega PII crua — apenas `entity_type`, `expected_pattern`, `sha256_prefix`, métricas.
+
+### Guardrails de tamanho
+
+| Alvo | Cap | Código em violação |
+|---|---|---|
+| `image_base64` decoded | 5 MB | `E_OCR_IMAGE_TOO_LARGE` |
+| `text` em `pii_mask` | 100 KB | `E_PII_TEXT_SIZE` |
+| `exam_name` query RAG | 500 chars | `E_RAG_QUERY_TOO_LARGE` |
+| `mcp_servers[]` (spec) | 10 itens | `E_TRANSPILER_SCHEMA` |
+| `http_tools[]` (spec) | 20 itens | `E_TRANSPILER_SCHEMA` |
+| `tool_filter[]` (spec) | 50 itens | `E_TRANSPILER_SCHEMA` |
+| `name`, `description`, `instruction` | 500 chars | `E_TRANSPILER_SCHEMA` |
+| URL em `url`, `base_url`, `openapi_url` | 2048 chars | `E_TRANSPILER_SCHEMA` |
+| `patient_ref` (API) | 64 chars | `E_API_VALIDATION` |
+| `exams[]` no POST | 20 itens | `E_API_VALIDATION` |
+| `spec.json` total | 1 MB | `E_TRANSPILER_SCHEMA` |
+| `agent.py` gerado | 100 KB | `E_TRANSPILER_RENDER_SIZE` |
+| HTTP body POST | 10 MB (FastAPI default) | 413 |
+| `allow_list` (PII) | 1000 itens | `E_PII_ALLOW_LIST_SIZE` |
+
+Caps são verificados **na borda** — antes de decodificar, parsear ou invocar motor pesado.
+
+### Timeouts de falha
+
+| Operação | Timeout | Código em violação |
+|---|---|---|
+| OCR tool call | 5 s | `E_OCR_TIMEOUT` |
+| RAG tool call | 2 s | `E_RAG_TIMEOUT` |
+| POST `/api/v1/appointments` | 10 s | `E_API_TIMEOUT` |
+| Agente total (execução) | 300 s (5 min) | `E_AGENT_TIMEOUT` |
+| Healthcheck HTTP (compose) | 30 s total | timeout do compose |
+| Retry MCP (ADR-0006) | 1 tentativa, delay fixo 500 ms | — |
+
+Timeout é **contrato de falha**, diferente de latência p95 (métrica NFR). Os dois coexistem.
+
+### Correlation ID
+
+- **Origem**: CLI do agente gera UUID v4 no início da execução.
+- **Propagação HTTP**: header `X-Correlation-ID` em todas as chamadas (OCR, RAG, API).
+- **Propagação MCP**: metadata/contexto quando disponível; fallback local `mcp-<uuid4>[:8]`.
+- **Eco**: `scheduling-api` gera `api-<uuid4>[:8]` se a request vier sem header e devolve no response.
+- **Logs**: 100 % dos registros JSON têm `correlation_id`. Auditável por grep.
+
+### Logging sem PII crua
+
+Nenhum log contém valor cru detectado como entidade PII. Formato canônico para referenciar dado mascarado:
+
+```json
+{"entity_type": "BR_CPF", "sha256_prefix": "a1b2c3d4", "score": 0.95}
+```
+
+Auditoria: E2E (Bloco 0008 AC15) grepa fixtures de CPF/nome em todos os arquivos sob `docs/EVIDENCE/` e deve retornar zero matches.
+
 ## Formato de log
 
 Logging estruturado em JSON via `logging` stdlib + formatter custom. Um registro por linha, `stdout` (compose captura).
@@ -341,6 +449,7 @@ Registradas em [`docs/adr/`](adr/README.md):
 - [ADR-0005](adr/0005-dev-stack.md) — Stack de desenvolvimento (uv + Gemini + GitHub Actions).
 - [ADR-0006](adr/0006-spec-schema-and-agent-topology.md) — Schema do JSON spec + topologia LlmAgent único.
 - [ADR-0007](adr/0007-rag-fuzzy-and-catalog.md) — RAG MCP via rapidfuzz + catálogo CSV.
+- [ADR-0008](adr/0008-robust-validation-policy.md) — Robustez de validação: taxonomia de erros, guardrails e shape de resposta.
 
 ## Diagrama de fluxo (pedido médico)
 

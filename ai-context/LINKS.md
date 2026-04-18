@@ -105,6 +105,35 @@ Pesquisa consolidada em [`references/AGENTIC_PATTERNS.md`](references/AGENTIC_PA
 - [blog] https://machinelearningmastery.com/agentic-ai-roadmap-2026/ — Machine Learning Mastery, roadmap 2026 de agentic AI (util para priorizar backlog de Bloco 6).
 - [util] tweet @AndrewYNg (2025): "agentic workflows > bigger models" — justificativa para focar em patterns em vez de trocar modelo.
 
+## Catálogos de nomenclatura médica (BR)
+
+Fontes públicas consideradas para popular o CSV do RAG MCP (ADR-0007 § "Fonte do dataset"). Restrição absoluta: zero dados de paciente — apenas nomenclatura e códigos.
+
+- [oficial] https://datasus.saude.gov.br/sigtap/ — portal SIGTAP (Sistema de Gerenciamento da Tabela de Procedimentos do SUS / DATASUS). **Fonte primária** escolhida: ≥ 4.600 procedimentos SUS, domínio público (LAI), atualizado mensalmente, distribuído como `.txt` fixed-width.
+- [ref] https://github.com/rdsilva/SIGTAP — conversão comunitária do SIGTAP para CSV (licença MIT). Aceitável como conveniência se derivação do `.txt` oficial virar fricção; registrar URL + data no commit.
+- [oficial] https://dados.gov.br/ — portal de dados abertos do governo federal; hospeda distribuição do rol ANS/TUSS como **fallback** quando SIGTAP não cobre um exame específico.
+- [oficial] https://www.gov.br/ans/pt-br/acesso-a-informacao/participacao-da-sociedade/atualizacao-do-rol-de-procedimentos — ANS, rol de procedimentos (TUSS) — saúde suplementar, fallback para bioquímica mais granular.
+- [ref] https://loinc.org/international/brazil/ — LOINC PT-BR. **REJEITADO** (ADR-0007): licença Regenstrief com cláusulas de redistribuição controlada + overkill para MVP (60–70k termos vs ≥ 120 necessários).
+
+## Design by Contract (DbC)
+
+Bases teóricas + ferramentas concretas para a disciplina declarada em `ai-context/GUIDELINES.md § 10` e aplicada na seção "Design by Contract" de cada `docs/specs/NNNN-<slug>/plan.md`.
+
+- [oficial] https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html — Google-style docstrings (Sphinx Napoleon). Formato adotado para seções `Pre`, `Post`, `Invariant`, `Raises`.
+- [ref] https://peps.python.org/pep-0316/ — PEP 316 "Programming by Contract for Python" (histórico; rejeitado oficialmente mas referência do vocabulário `pre`/`post`/`invariant`).
+- [oficial] https://docs.pydantic.dev/latest/concepts/validators/ — Pydantic v2 `field_validator` / `model_validator`. Cobre pré-condição de dados sem lib extra.
+- [util] https://github.com/Parquery/icontract — `icontract` lib (avaliada e **descartada**: overhead runtime + dep nova em 3 serviços + redundância com Pydantic v2).
+
+## Clean Code (Python procedural)
+
+Referências que fundamentam o bloco "Critérios Clean Code (Python procedural)" de `.claude/agents/code-reviewer.md` e `ai-context/GUIDELINES.md § 1.1`. Foco: heurísticas pragmáticas aplicáveis a código procedural/funcional — sem dogmas OOP.
+
+- [ref] https://www.oreilly.com/library/view/clean-code-a/9780136083238/ — *Clean Code: A Handbook of Agile Software Craftsmanship*, Robert C. Martin (2008). Fonte do vocabulário (nomes significativos, funções pequenas, DRY). SOLID e Object Calisthenics explicitamente **dispensados** aqui por serem OOP-centric.
+- [ref] https://github.com/zedr/clean-code-python — adaptação comunitária dos princípios Clean Code para Python (util como checklist cruzado).
+- [oficial] https://docs.astral.sh/ruff/rules/ — referência de regras do Ruff. Usamos `E, F, I, UP, B, S, C901, SIM, RET, N` (GUIDELINES § 1).
+- [ref] https://www.sonarsource.com/docs/CognitiveComplexity.pdf — paper SonarSource sobre Cognitive Complexity. Referenciado mas **não adotado como gate** no MVP (opt-in se `complexipy` entrar no toolchain depois).
+- [blog] https://qntm.org/clean — crítica ao dogma "funções de 4–20 linhas" do Uncle Bob. Justifica nossa heurística mais flexível (≤ 25 linhas, com exceções).
+
 ## Outras
 
 *(uso pontual — marcar com `[util]`)*

@@ -38,11 +38,25 @@ Este ADR formaliza o casamento SDD + TDD como processo obrigatório para todo bl
 Todo bloco de trabalho segue o ciclo de 9 passos abaixo, com artefatos em `docs/specs/NNNN-<slug>/`.
 
 ```
-1. Requisito   →  2. Spec   →  3. Plan  →  4. Tasks  →  [checkpoint humano #1]
+1. Requisito   →  2. Spec   →  3. Plan  →  4. Tasks  →  [checkpoint humano #1 — coletivo]
                                               ↓
 9. Checkpoint  ←  8. Docs  ←  7. Evidence  ←  6. Review  ←  5a/5b/5c. Tests→Code→Refactor
 humano #2
 ```
+
+### Granularidade do checkpoint #1 — coletivo (não por bloco)
+
+Quando há múltiplos blocos planejados (caso deste projeto — 8 blocos enumerados em `ai-context/WORKFLOW.md § "Ordem macro"`), os passos 1–4 são executados **para todos os blocos em um único lote** e o checkpoint humano #1 é **coletivo**: o usuário revisa o conjunto de `spec+plan+tasks` de todos os blocos de uma vez.
+
+Justificativas:
+
+- **Paralelismo na fase 5.** Com todas as specs/tasks aprovadas, os engenheiros de domínio (`transpiler-engineer`, `adk-mcp-engineer`, `fastapi-engineer`, `security-engineer`, `devops-engineer`) podem iniciar seus blocos **simultaneamente** quando não há dependência de código entre eles. Checkpoint por bloco serializaria o caminho crítico sem ganho.
+- **Coerência cross-bloco detectada cedo.** A revisão humana vê, num único passe, se contratos descritos em diferentes specs batem (ex.: tool signatures no Bloco 3 vs import no Bloco 6).
+- **Custo cognitivo concentrado.** Ao invés de 8 checkpoints pequenos, um checkpoint maior mas único.
+
+O **checkpoint #2** permanece **por bloco** — cada bloco entrega evidências próprias; o usuário valida antes de marcar como `done`.
+
+O passo 2 (Spec) é escrito com base em ADRs e `docs/ARCHITECTURE.md` já frozen, o que reduz o risco de incoerência entre specs geradas em lote.
 
 ### Passos
 
@@ -89,3 +103,5 @@ Os 3 templates (spec/plan/tasks) ficam em `docs/specs/README.md` e são copiados
 - https://github.com/github/spec-kit
 - https://github.com/github/spec-kit/blob/main/spec-driven.md
 - https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html
+
+> Editado em 2026-04-18 durante fase pré-implementação: checkpoint humano #1 passa a ser **coletivo** (um único passe sobre spec+plan+tasks de todos os blocos planejados), em vez de por bloco. Motivação registrada em seção "Granularidade do checkpoint #1". Mudança de processo, não de método — SDD + TDD pragmático permanecem. Checkpoint #2 continua por bloco.

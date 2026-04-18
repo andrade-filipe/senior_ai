@@ -70,6 +70,44 @@ Cada critério é **verificável** — por teste automatizado ou inspeção obje
 - [AC1] Dado <contexto>, quando <ação>, então <resultado observável>.
 - [AC2] …
 
+## Robustez e guardrails
+
+Seção obrigatória desde ADR-0008. Ordem mental: **o que o código promete (ACs) → como o código é robusto (esta seção) → como contratos semânticos amarram ao teste (Rastreabilidade DbC)**.
+
+### Happy Path
+
+Uma ou duas frases descrevendo a execução do caminho feliz do bloco — entrada válida típica, passos principais, saída esperada. **Sem este bloco, o engenheiro tende a implementar só o teste positivo do primeiro AC**.
+
+### Edge cases
+
+Tabela das situações de borda que o bloco **deve** tratar explicitamente. Cada linha com AC dedicado (P1) vira teste obrigatório em `tasks.md`. Edge cases documentados sem AC (P2) são comportamentos esperados sem teste hard-gate; ganham teste no Refactor.
+
+| Situação | Tratamento | Código de erro | AC ref |
+|---|---|---|---|
+| (ex.) `image_base64` > 5 MB | rejeitar antes de decodificar | `E_OCR_IMAGE_TOO_LARGE` | `AC18` |
+
+### Guardrails
+
+Limites concretos que o código **deve** aplicar. Referenciam a tabela-mestre de [ADR-0008](../adr/0008-robust-validation-policy.md) / [ARCHITECTURE § Robustez e guardrails](../ARCHITECTURE.md), repetidos aqui apenas para facilitar leitura.
+
+| Alvo | Cap / Timeout | Violação | AC ref |
+|---|---|---|---|
+
+### Security & threats
+
+Ameaças específicas ao bloco e mitigações. Formato curto — um item por ameaça, mitigação em uma linha.
+
+- **Ameaça**: (ex.) ReDoS em regex de CPF.
+  **Mitigação**: regex ancorado + teste com input adversarial (AC19).
+
+### Rastreabilidade DbC
+
+Mapa AC ↔ linha DbC do `plan.md`. Para cada AC que corresponde a uma pré/pós/invariante formal, listar o alvo do `plan.md § Design by Contract` e o tipo do contrato (Pre/Post/Invariant). Essa sub-seção é o elo **spec → plan** do triplo-trace que o `code-reviewer` exige; o elo **plan → tasks** vive na coluna `Task ref` da tabela DbC do `plan.md`.
+
+| AC | DbC target (plan.md) | Tipo |
+|---|---|---|
+| AC4 | `pii_mask` | Post |
+
 ## Requisitos não-funcionais
 
 Desempenho, segurança, observabilidade, operabilidade. Usar números sempre que possível (ex.: "p95 < 200 ms").
@@ -104,6 +142,23 @@ Classes Pydantic, schemas JSON, tabelas, formatos de arquivo. Incluir exemplos c
 ## Contratos
 
 Assinaturas de tools MCP, rotas HTTP, envelopes de evento. O que sai e entra em cada fronteira pública.
+
+## Design by Contract
+
+Declare contratos semânticos do bloco — pré/pós/invariantes que o código deve honrar. Cada entrada vira teste correspondente em `tasks.md` § Tests e AC correspondente em `spec.md § Rastreabilidade DbC`.
+
+| Alvo (função/classe/modelo) | Pre | Post | Invariant | AC ref | Task ref |
+|---|---|---|---|---|---|
+| `nome_do_alvo` | condição que o caller garante | garantia de saída | propriedade sempre verdadeira | `AC4` | `T013 [DbC]` |
+
+**Onde declarar no código**:
+- Docstring Google-style com seções `Pre`, `Post`, `Invariant`.
+- Pydantic `field_validator` / `model_validator` para dados.
+- `assert` em fronteiras críticas de `transpiler/` e `security/` (stdlib; sem lib extra).
+
+**Onde enforcar**:
+- Cada linha desta tabela tem teste em `tasks.md § Tests` — numeração `T0xx` marcado `[DbC]`.
+- Colunas `AC ref` e `Task ref` são **obrigatórias** — o `code-reviewer` usa o trace triplo (`AC ref` em `spec.md § Rastreabilidade DbC` + `Task ref` com tag `[DbC]` em `tasks.md` + enforcement no código) para aprovar o bloco.
 
 ## Dependências
 
@@ -144,6 +199,10 @@ Um teste por AC do spec quando viável. Tarefas nesta seção **devem falhar** a
 
 - [ ] T010 — escrever teste falhando para [AC1] em `tests/…/test_x.py`
 - [ ] T011 — …
+
+**Convenção de tags**:
+- `[P]` — paralelizável (arquivos de teste distintos, sem conflito).
+- `[DbC]` — exerce uma linha da tabela DbC do `plan.md`. Acumula com `[P]` quando ambos se aplicam. O `code-reviewer` usa `[DbC]` para mecanicamente confirmar que toda linha da tabela DbC do plan tem teste correspondente em `tasks.md`; sem tag `[DbC]` onde se espera, o bloco é rejeitado.
 
 ## Implementation (TDD GREEN)
 

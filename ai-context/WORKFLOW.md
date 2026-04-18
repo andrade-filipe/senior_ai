@@ -11,13 +11,22 @@ Spec é o artefato primário; código é a expressão dela num stack específico
 ## Ciclo por bloco de trabalho
 
 ```
- 1. Requisito → 2. Spec → 3. Plan → 4. Tasks → [checkpoint humano #1]
+ 1. Requisito → 2. Spec → 3. Plan → 4. Tasks → [checkpoint humano #1 — COLETIVO]
                                                       ↓
  9. Checkpoint ← 8. Docs ← 7. Evidence ← 6. Review ← 5. Tests→Code
-    humano #2
+    humano #2 (por bloco)
 ```
 
 Cada bloco vive em `docs/specs/NNNN-<slug>/` com três arquivos: `spec.md`, `plan.md`, `tasks.md`. Templates em [`docs/specs/README.md`](../docs/specs/README.md).
+
+### Granularidade dos checkpoints
+
+- **Checkpoint #1 é COLETIVO.** Passos 1–4 são executados para **todos os blocos planejados** em um único lote pelo `software-architect`. O usuário revisa o conjunto de todos os `spec+plan+tasks` de uma vez. Sem essa revisão, **nenhum teste ou código** é escrito em nenhum bloco.
+- **Checkpoint #2 é POR BLOCO.** Cada bloco fecha com evidência própria e aprovação individual antes de ser marcado `done` em `STATUS.md`.
+
+Esta granularidade habilita **paralelismo real na fase 5**: com todas as specs/tasks aprovadas, engenheiros de domínio iniciam seus blocos simultaneamente quando não há dependência de código (transpiler ↔ MCP ↔ FastAPI ↔ PII são largamente independentes; Bloco 6 depende de 3/4/5; Bloco 7 depende de todos anteriores; Bloco 8 fecha).
+
+Formalizado em [ADR-0004 § "Granularidade do checkpoint #1"](../docs/adr/0004-sdd-tdd-workflow.md).
 
 ### 1. Requisito
 
@@ -54,14 +63,14 @@ Cada bloco vive em `docs/specs/NNNN-<slug>/` com três arquivos: `spec.md`, `pla
 
 **Saída:** `tasks.md` em `status: todo`.
 
-### Checkpoint humano #1
+### Checkpoint humano #1 (coletivo)
 
 **Dono:** o usuário.
-- Apresentar spec + plan + tasks.
-- Sem aprovação, **nenhum teste ou código** é escrito.
-- Retornos possíveis: "go", "ajustar X", "abandonar bloco".
+- Apresentar **todos** os spec + plan + tasks dos blocos planejados de uma só vez.
+- Sem aprovação, **nenhum teste ou código** é escrito em **nenhum** bloco.
+- Retornos possíveis: "go" (libera todos), "ajustar X em bloco N" (iteração focada), "abandonar bloco N" (remove do backlog).
 
-**Saída:** spec → `approved`; plan → `approved`; tasks → `in_progress` (ou retorno ao passo 2/3/4).
+**Saída:** todos os specs → `approved`; todos os plans → `approved`; todos os tasks → `in_progress` (ou retornos ao passo 2/3/4 focados nos blocos com findings).
 
 ### 5. Tests → Code
 

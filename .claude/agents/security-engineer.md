@@ -1,7 +1,7 @@
 ---
 name: security-engineer
 description: Use for the PII detection/anonymization layer using Microsoft Presidio, including Brazilian recognizers (CPF, CNPJ, RG, BR phones), audit logging, and agent guardrails. Invoke when any file under security/ needs work.
-model: sonnet
+model: opus
 tools:
   - Read
   - Grep

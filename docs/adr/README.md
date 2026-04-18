@@ -13,6 +13,7 @@ Registros de decisões arquiteturais aceitas ao longo do desenvolvimento. ADRs s
 | [0005](0005-dev-stack.md) | Stack de desenvolvimento (uv + Gemini + GitHub Actions) | accepted | 2026-04-18 |
 | [0006](0006-spec-schema-and-agent-topology.md) | Schema do JSON spec + topologia do agente gerado | accepted | 2026-04-18 |
 | [0007](0007-rag-fuzzy-and-catalog.md) | RAG MCP via rapidfuzz + catálogo CSV | accepted | 2026-04-18 |
+| [0008](0008-robust-validation-policy.md) | Robustez de validação — taxonomia de erros, guardrails e shape de resposta | accepted | 2026-04-18 |
 
 ## Quando abrir uma ADR
 

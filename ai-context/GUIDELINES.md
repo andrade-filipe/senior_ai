@@ -15,11 +15,31 @@ Padrões obrigatórios para todo código, teste, infraestrutura e documentação
   uv run ruff format .            # format
   uv run mypy .                   # type-check (strict em transpiler/ e security/)
   ```
-- **Lint**: `ruff check`. Regras mínimas: `E`, `F`, `I`, `UP`, `B`, `S` (bandit via ruff).
+- **Lint**: `ruff check`. Regras mínimas: `E`, `F`, `I`, `UP`, `B`, `S` (bandit via ruff), `C901` (McCabe), `SIM` (simplify), `RET` (return), `N` (naming).
 - **Type checking**: `mypy --strict` em `transpiler/` e `security/`. Demais módulos: `mypy` sem `--strict`, mas com type hints onde faz sentido.
 - **Estrutura**: imports absolutos; um arquivo expõe no máximo uma classe pública principal.
 - **Docstrings**: obrigatórias em toda função pública e em toda tool MCP (Google style: Args/Returns/Raises).
 - **Comentários**: escrever apenas o *porquê* quando não é óbvio. Sem "código comentado", sem TODOs órfãos.
+- **Heurística de função**: ≤ 25 linhas **contando apenas o corpo** (exclui docstring + type hints); ≤ 3 parâmetros; flag-args (bool que alterna comportamento) proibidos — split em duas funções ou use kwargs explícitos.
+
+## 1.1 Clean Code (Python procedural)
+
+Aplicamos um subconjunto pragmático adaptado a código procedural/funcional (não-OOP). Checklist completo (obrigatório vs recomendado, com dispensas explícitas de SOLID e Object Calisthenics) vive em [`.claude/agents/code-reviewer.md`](../.claude/agents/code-reviewer.md) § "Critérios Clean Code (Python procedural)" — `code-reviewer` é quem faz cumprir no checkpoint #2.
+
+Resumo do que é **obrigatório** (violação = BLOCKED):
+- Type hints em toda função pública (args + return).
+- Nomes revelam intenção; `snake_case` PEP 8; sem `data`/`temp`/`x` fora de lambdas/loops.
+- Exceções customizadas herdam de `ChallengeError`; `except:` cego proibido; mensagens ricas (o quê / por quê / como corrigir).
+- Sem dead code; sem TODO órfão (exige link para ADR/issue/Txxx).
+
+Resumo do que é **recomendado** (violação = CHANGES REQUESTED):
+- Funções ≤ 25 linhas (heurística, não dogma).
+- ≤ 3 parâmetros; flag-args proibidos.
+- Comments só explicam **porquê**; docstring cobre **o quê**.
+- McCabe complexity < 12 (via `C901`).
+- DRY: duplicação ≥ 3× → extrair helper.
+
+Explicitamente **dispensados**: SOLID (código é procedural), Object Calisthenics (dogmas OOP), cyclomatic complexity como gate (usamos como sinal, não como veto), dogma "funções de 4–20 linhas" (Uncle Bob).
 
 ## 2. Validação e erros
 
@@ -27,6 +47,7 @@ Padrões obrigatórios para todo código, teste, infraestrutura e documentação
 - Mensagens de erro explicitam: **o que** está errado, **por que**, **como corrigir** (com exemplo).
 - Exceções customizadas herdam de uma base do módulo (ex.: `TranspilerError`, `PIIError`).
 - Nenhum `except:` cego; sempre captura específico.
+- **Política cross-service** fixada em [ADR-0008](../docs/adr/0008-robust-validation-policy.md) e operacionalizada em [`docs/ARCHITECTURE.md § Robustez e guardrails`](../docs/ARCHITECTURE.md). Taxonomia completa `E_*`, caps de tamanho, timeouts, shape canônico (`{code, message, hint, path, context}`), correlation_id e no-PII-in-logs — **ler ADR-0008 antes de decidir** qualquer código de erro novo ou limite numérico. Reuso de código entre módulos proibido; novo `E_*` exige PR que atualize a tabela.
 
 ## 3. Segurança
 
@@ -34,7 +55,7 @@ Padrões obrigatórios para todo código, teste, infraestrutura e documentação
 - **Segredos**: exclusivamente via `.env`. `.env` em `.gitignore`. `.env.example` commitado.
 - **Logs**: estruturados (JSON ou key=value). Nunca incluem valores brutos detectados como PII. Entradas de auditoria guardam hash, tipo, operação.
 - **MCP**: servidores expostos apenas na rede interna do compose. API FastAPI exposta no host em `:8000`.
-- **Input validation** na borda: API, cada tool MCP, CLI do transpilador.
+- **Input validation** na borda: API, cada tool MCP, CLI do transpilador. Caps concretos (tamanho de `image_base64`, `text`, `exams[]`, `spec.json`, etc.) na **tabela de guardrails** em [`docs/ARCHITECTURE.md § Robustez e guardrails`](../docs/ARCHITECTURE.md) / [ADR-0008](../docs/adr/0008-robust-validation-policy.md). Violação de cap vira `E_*` conforme tabela; valor é rejeitado na borda, antes de invocar motor pesado (Presidio, base64 decoder, `json.loads`).
 - **Dependências**: pinadas (`requirements.txt` com `==` ou `~=`).
 
 ## 4. Testes
@@ -104,3 +125,9 @@ Padrões obrigatórios para todo código, teste, infraestrutura e documentação
 - Cada marco tem `docs/EVIDENCE/<marco>.md`.
 - Cada contrato alterado tem ADR em `docs/adr/`.
 - Cada bug encontrado em revisão tem um commit corretivo rastreável.
+
+## 10. Design by Contract
+
+Contratos semânticos declarados em docstring (seções `Pre`, `Post`, `Invariant`, `Raises`). Pydantic cobre pré-condição de dados; assert cobre fronteira de função crítica; teste cobre pós/invariante. Nenhuma lib extra. Cada entrada da tabela "Design by Contract" do `plan.md` tem teste correspondente em `tasks.md`.
+
+**Convenção de tagging (triplo-trace)**: a tabela DbC do `plan.md` carrega colunas `AC ref` (aponta para o AC do `spec.md`) e `Task ref` (aponta para a task de teste em `tasks.md`). Testes que exercem contrato DbC formal são marcados `[DbC]` em `tasks.md`, ao lado de `[P]` se paralelizáveis. O `spec.md` fecha o triângulo com a sub-seção **Rastreabilidade DbC** ao final de "Critérios de aceitação", listando o mapa AC ↔ linha DbC. Esse triplo-trace (spec ↔ plan ↔ tasks) é condição de aprovação pelo `code-reviewer`: uma linha DbC sem AC referenciado, ou um `AC ref` sem sub-seção Rastreabilidade, ou um `Task ref` sem tag `[DbC]` na task correspondente → `CHANGES REQUESTED`.
