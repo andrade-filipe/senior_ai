@@ -72,7 +72,7 @@ flowchart TB
   ├── Dockerfile
   └── .env.example
   ```
-- `root_agent = LlmAgent(...)` com `MCPToolset(SseConnectionParams(...))` para OCR e RAG, e OpenAPI toolset (ou HTTP client simples) para a API de agendamento.
+- `root_agent = LlmAgent(...)` com `McpToolset(connection_params=StreamableHTTPConnectionParams(url=...))` para OCR e RAG (o ADK atual consome endpoints SSE via essa classe — ver ADR-0001 nota de correção), e OpenAPI toolset (ou HTTP client simples) para a API de agendamento.
 - `before_model_callback` aplica PII guard como segunda linha de defesa.
 
 ## Contratos entre subsistemas
@@ -172,7 +172,7 @@ class GuardrailSpec(BaseModel):
 class AgentSpec(BaseModel):
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9-]*$")
     description: str
-    model: Literal["gemini-2.0-flash"]      # Literal força revisão ao trocar
+    model: Literal["gemini-2.5-flash"]      # Literal força revisão ao trocar
     instruction: str                         # prompt multiline, imperativo
     mcp_servers: list[McpServerSpec]
     http_tools: list[HttpToolSpec]
@@ -185,7 +185,7 @@ Exemplo mínimo (`spec.example.json`):
 {
   "name": "medical-order-agent",
   "description": "Agente de agendamento de exames a partir de pedidos médicos",
-  "model": "gemini-2.0-flash",
+  "model": "gemini-2.5-flash",
   "instruction": "Você recebe uma imagem...",
   "mcp_servers": [
     {"name": "ocr", "url": "http://ocr-mcp:8001/sse"},
@@ -249,14 +249,14 @@ Formato congelado pela [ADR-0007](adr/0007-rag-fuzzy-and-catalog.md).
 
 ## Lista definitiva de entidades PII
 
-Motor: Microsoft Presidio com recognizers BR. Congelado pela [ADR-0003](adr/0003-pii-double-layer.md). Aplicação dupla: dentro do `ocr-mcp` (linha 1) e via `before_model_callback` do agente (linha 2).
+Motor: Microsoft Presidio com recognizers BR **escritos neste projeto** (Presidio não oferece reconhecedores brasileiros nativos — ver ADR-0003 nota de correção). Congelado pela [ADR-0003](adr/0003-pii-double-layer.md). Aplicação dupla: dentro do `ocr-mcp` (linha 1) e via `before_model_callback` do agente (linha 2).
 
 | Entidade | Origem | Ação | Placeholder |
 |---|---|---|---|
-| `BR_CPF` | BR recognizer | replace | `<CPF>` |
-| `BR_CNPJ` | BR recognizer | replace | `<CNPJ>` |
-| `BR_RG` | BR recognizer | replace | `<RG>` |
-| `BR_PHONE` | BR recognizer | replace | `<PHONE>` |
+| `BR_CPF` | custom recognizer (regex + dígito verificador via `pycpfcnpj`) | replace | `<CPF>` |
+| `BR_CNPJ` | custom recognizer (regex + dígito verificador via `pycpfcnpj`) | replace | `<CNPJ>` |
+| `BR_RG` | custom recognizer (regex por UF mais comum) | replace | `<RG>` |
+| `BR_PHONE` | custom recognizer (regex DDD+9 dígitos BR) | replace | `<PHONE>` |
 | `PERSON` | Presidio stock | replace | `<PERSON>` |
 | `EMAIL_ADDRESS` | Presidio stock | replace | `<EMAIL>` |
 | `PHONE_NUMBER` | Presidio stock | replace | `<PHONE>` |

@@ -48,4 +48,8 @@ O módulo `security/` expõe uma única função pública `pii_mask(text, langua
 - `docs/DESAFIO.md` — seção "Camada de Segurança (PII)"
 - `ai-context/references/PII.md`
 - https://microsoft.github.io/presidio/
-- https://google.github.io/adk-docs/ — seção callbacks (`before_model_callback`)
+- https://microsoft.github.io/presidio/supported_entities/
+- https://adk.dev/callbacks/ — `before_model_callback`
+- https://github.com/matheuscas/pycpfcnpj — validação de dígitos CPF/CNPJ (lib BR consolidada)
+
+> Corrigido em 2026-04-18 durante auditoria pré-implementação: Presidio **não fornece** recognizers brasileiros nativos (`BR_CPF`, `BR_CNPJ`, `BR_RG`, `BR_PHONE` não existem na lib, confirmado em `https://microsoft.github.io/presidio/supported_entities/` — países cobertos: US, UK, Spain, Italy, Poland, Singapore, Australia, India, Finland, Korea, Nigeria, Thailand; Brasil ausente). Os quatro reconhecedores BR serão escritos pelo `security-engineer` como custom recognizers, cada um combinando regex + validação de dígitos via `pycpfcnpj` (onde aplicável). Impacto no esforço: Bloco 5 ganha ~0.5 pessoa-dia de codificação extra + testes unitários dos recognizers. O `before_model_callback` (ADR-0003 decisão central) foi confirmado como existente e capaz de mutar `llm_request.contents[].parts[].text` (ver `https://adk.dev/callbacks/`).

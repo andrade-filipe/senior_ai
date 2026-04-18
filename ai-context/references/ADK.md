@@ -23,7 +23,7 @@ from google.adk.agents.llm_agent import Agent
 
 agent = Agent(
     name="researcher",
-    model="gemini-flash-latest",
+    model="gemini-2.5-flash",
     description="Agent that helps research topics.",
     instruction="You help users research topics thoroughly.",
     tools=[...],
@@ -31,7 +31,7 @@ agent = Agent(
 ```
 Campos principais:
 - `name` (str): identificador único.
-- `model` (str): ex. `gemini-2.0-flash`, `gemini-flash-latest`.
+- `model` (str): ex. `gemini-2.5-flash` (stable recomendado), `gemini-flash-latest`. `gemini-2.0-flash` está deprecated pelo Google desde 2025/2026 — não usar.
 - `description` (str): usada para roteamento em multi-agent.
 - `instruction` (str): prompt de sistema.
 - `tools` (list): funções, `McpToolset`, built-ins.
@@ -79,18 +79,20 @@ def get_weather(city: str) -> dict:
 
 ```python
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
 
 ocr_toolset = McpToolset(
-    connection_params=SseConnectionParams(
+    connection_params=StreamableHTTPConnectionParams(
         url="http://ocr-mcp:8001/sse",
-        headers={"X-API-Key": "..."},
+        headers={
+            "Accept": "application/json, text/event-stream",
+        },
     ),
     tool_filter=["extract_exams_from_image"],
 )
 ```
 
-Em versões antigas do `google-adk`, a classe é `SseServerParams` importada de `google.adk.tools.mcp_tool.mcp_toolset`. **Verificar a versão fixada no `requirements.txt`** antes de escolher o import.
+Atualizado em 2026-04-18 após auditoria: o ADK atual expõe apenas `StreamableHTTPConnectionParams` como classe de conexão MCP remota. A classe `SseConnectionParams` (/`SseServerParams`) citada anteriormente não existe mais na versão corrente; o servidor continua 100% SSE (ADR-0001) e o cliente consome via `StreamableHTTPConnectionParams` com o header `Accept` apropriado.
 
 ### 4.3 Uso síncrono vs assíncrono
 - Em scripts CLI isolados, o padrão async com `exit_stack` / `await toolset.close()` é necessário.
@@ -164,7 +166,7 @@ No desafio, o fluxo é claramente sequencial (Entrada → OCR → RAG → Agenda
 - `instruction` curto, imperativo e orientado a tarefa.
 - Evitar estado global; usar `session.state`.
 - Testar com `adk web` antes de empacotar.
-- Fechar `MCPToolset` em teardown quando usado fora de `adk web`.
+- Fechar `McpToolset` em teardown quando usado fora de `adk web`.
 
 ## 10. Fontes
 - `https://adk.dev/`

@@ -59,7 +59,7 @@ Detalhes e exemplos em `ai-context/WORKFLOW.md` (seção "Layout da documentaç�
 ## Princípios não-negociáveis
 
 - **SDD + TDD pragmático** como método obrigatório (fixado em ADR-0004): spec → plan → tasks → checkpoint #1 → RED → GREEN → review → evidence → checkpoint #2. Nenhum teste ou código é escrito antes do checkpoint #1. Test-first é obrigatório em `transpiler/` e `security/`; same-commit nos demais módulos.
-- **Stack fechada** (ADR-0005): `uv` + Gemini direct API (`gemini-2.0-flash`) + GitHub Actions mínimo. Mudança em qualquer item exige ADR nova supersedendo.
+- **Stack fechada** (ADR-0005): `uv` + Gemini direct API (`gemini-2.5-flash`) + GitHub Actions mínimo. Mudança em qualquer item exige ADR nova supersedendo.
 - **Nenhum código** é aceito sem `code-reviewer` + aprovação humana.
 - **PII mascarada antes** de qualquer LLM ou persistência — dupla camada (ADR-0003).
 - **MCP transport = SSE**, exigência do desafio (ADR-0001).

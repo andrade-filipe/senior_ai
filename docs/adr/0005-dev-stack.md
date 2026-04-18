@@ -20,7 +20,7 @@ Decisões de stack que atravessam todos os serviços e bloqueiam o início da im
 2. **Monorepo com pyproject único na raiz** — simples para dev local; mas gera imagens inchadas e rebuild cascata.
 
 ### Provedor de LLM
-1. **Google Gemini via API key (escolhido)** — `gemini-2.0-flash` com variável `GOOGLE_API_KEY` e `GOOGLE_GENAI_USE_VERTEXAI=FALSE`. Zero credenciais GCP; tier gratuito generoso; reprodutível.
+1. **Google Gemini via API key (escolhido)** — `gemini-2.5-flash` com variável `GOOGLE_API_KEY` e `GOOGLE_GENAI_USE_VERTEXAI=FALSE`. Zero credenciais GCP; tier gratuito generoso; reprodutível.
 2. **Gemini via Vertex AI** — produção-grade mas exige projeto GCP + ADC + permissões. Overkill para um desafio.
 3. **LiteLLM multi-provider** — adiciona camada de abstração e dependências; ADK é projetado para Gemini.
 4. **Mock LLM** — contraria a exigência do desafio de usar LLM real.
@@ -46,7 +46,7 @@ Decisões de stack que atravessam todos os serviços e bloqueiam o início da im
 
 ### LLM
 - Provedor: **Google Gemini direct API**.
-- Modelo default: `gemini-2.0-flash` (campo `model` no spec JSON é `Literal` para auditar mudanças).
+- Modelo default: `gemini-2.5-flash` (campo `model` no spec JSON é `Literal` para auditar mudanças). Motivo da escolha: `gemini-2.0-flash` foi descontinuado pelo Google (ver nota de correção ao final desta ADR).
 - Variáveis de ambiente: `GOOGLE_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`.
 
 ### CI
@@ -67,6 +67,8 @@ Decisões de stack que atravessam todos os serviços e bloqueiam o início da im
 
 - https://docs.astral.sh/uv/
 - https://docs.astral.sh/uv/guides/integration/docker/
-- https://ai.google.dev/gemini-api/docs
-- https://google.github.io/adk-docs/ — seção Gemini API
+- https://ai.google.dev/gemini-api/docs/models
+- https://adk.dev/ — seção Gemini API
 - https://docs.github.com/actions/using-workflows
+
+> Corrigido em 2026-04-18 durante auditoria pré-implementação: `gemini-2.0-flash` foi marcado como deprecated pelo Google (ver `https://ai.google.dev/gemini-api/docs/models` seção "Previous models"). Modelo default atualizado para `gemini-2.5-flash` (stable, recomendação atual). Alias `gemini-flash-latest` existe mas fica fora do `Literal` porque remove a auditabilidade. URLs de referência atualizadas: docs ADK migraram de `google.github.io/adk-docs/` para `adk.dev/`.

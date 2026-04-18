@@ -1,6 +1,6 @@
 ---
 name: adk-mcp-engineer
-description: Use for anything involving Google ADK agents or MCP-SSE servers — OCR MCP, RAG MCP, generated ADK agent runtime, Runner/SessionService wiring, MCPToolset configuration.
+description: Use for anything involving Google ADK agents or MCP-SSE servers — OCR MCP, RAG MCP, generated ADK agent runtime, Runner/SessionService wiring, McpToolset configuration.
 model: sonnet
 tools:
   - Read
@@ -38,7 +38,7 @@ You own two tightly-coupled pieces: (1) the **MCP-SSE servers** (`ocr_mcp/`, `ra
 ## Technical rules
 
 - **MCP transport must be SSE.** Use `mcp.run(transport="sse", host="0.0.0.0", port=...)`. Document the port.
-- **ADK client** uses `McpToolset` with `SseConnectionParams` (or `SseServerParams` depending on `google-adk` version — verify against the pinned version).
+- **ADK client** uses `McpToolset(connection_params=StreamableHTTPConnectionParams(url=..., headers={"Accept": "application/json, text/event-stream"}))`. `StreamableHTTPConnectionParams` is the only remote connection class in current ADK and consumes SSE endpoints via compat (ADR-0001 nota de correção).
 - **Tools** are pure functions with docstrings and type hints. Every tool validates inputs and returns typed results.
 - **OCR for MVP**: deterministic mock (read bytes, return a canned structured response based on a fixture mapping). No real OCR yet.
 - **RAG mock**: at least 100 distinct exams in an in-memory catalog with realistic Brazilian lab exam names.
@@ -63,9 +63,9 @@ Cada commit cita `Txxx` da `tasks.md` do bloco.
 
 ## Decisões ativas
 
-- [ADR-0001](../../docs/adr/0001-mcp-transport-sse.md) — MCP transport = SSE; `mcp.run(transport="sse", …)`; agente via `MCPToolset(SseConnectionParams(...))`.
+- [ADR-0001](../../docs/adr/0001-mcp-transport-sse.md) — MCP transport = SSE; `mcp.run(transport="sse", …)`; agente via `McpToolset(connection_params=StreamableHTTPConnectionParams(url=...))`.
 - [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — chamar `security.pii_mask()` dentro do ocr-mcp + registrar `before_model_callback` no agente.
 - [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD pragmático.
 - [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio por serviço; Gemini via API key (`GOOGLE_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`).
-- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — agente gerado = `LlmAgent` único; `model: Literal["gemini-2.0-flash"]`.
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — agente gerado = `LlmAgent` único; `model: Literal["gemini-2.5-flash"]`.
 - [ADR-0007](../../docs/adr/0007-rag-fuzzy-and-catalog.md) — `rapidfuzz` threshold 80; catálogo em `rag_mcp/data/exams.csv` (colunas `name,code,category,aliases`).

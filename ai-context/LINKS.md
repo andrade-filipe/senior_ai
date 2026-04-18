@@ -18,11 +18,12 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 
 ## Google ADK (Agent Development Kit)
 
-- [oficial] https://docs.cloud.google.com/agent-builder/agent-development-kit/overview?hl=pt-br — visão geral e conceitos.
-- [oficial] https://github.com/google/adk-python — repositório oficial, fonte canônica para imports e APIs.
-- [oficial] https://google.github.io/adk-docs/ — documentação ADK (agents, tools, callbacks).
-- [oficial] https://google.github.io/adk-docs/agents/llm-agents — referência para `LlmAgent` usado em ADR-0006.
-- [codelab] https://codelabs.developers.google.com/your-first-agent-with-adk?hl=pt-br#0 — primeiro agente ADK, usado como referência de estrutura mínima.
+- [oficial] https://adk.dev/ — documentação oficial (domínio migrou de `google.github.io/adk-docs/` para `adk.dev/` — confirmado em 2026-04-18).
+- [oficial] https://adk.dev/agents/llm-agents/ — referência para `LlmAgent` usado em ADR-0006 (parâmetro é `instruction` singular).
+- [oficial] https://adk.dev/tools-custom/mcp-tools/ — classe `McpToolset` + `StreamableHTTPConnectionParams` (ADR-0001, ADR-0006).
+- [oficial] https://adk.dev/callbacks/ — `before_model_callback(callback_context, llm_request)` (ADR-0003).
+- [oficial] https://github.com/google/adk-python — repositório oficial, fonte canônica para imports.
+- [codelab] https://codelabs.developers.google.com/your-first-agent-with-adk?hl=pt-br#0 — primeiro agente ADK.
 - [blog] https://developers.googleblog.com/en/agent-development-kit-easy-to-build-multi-agent-applications/ — anúncio e high-level.
 
 ## MCP (Model Context Protocol) e FastMCP
@@ -41,8 +42,10 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 ## Microsoft Presidio e reconhecedores PT-BR
 
 - [oficial] https://microsoft.github.io/presidio/ — documentação Presidio (analyzer + anonymizer).
+- [oficial] https://microsoft.github.io/presidio/supported_entities/ — lista oficial de entidades suportadas; confirma que **Brasil não está coberto** (auditoria 2026-04-18) → BR recognizers são custom.
 - [oficial] https://github.com/microsoft/presidio — repositório oficial.
-- [ref] https://github.com/microsoft/presidio/tree/main/presidio-analyzer/presidio_analyzer/predefined_recognizers — recognizers nativos, referência para criar BR_CPF/BR_CNPJ/BR_RG/BR_PHONE.
+- [ref] https://github.com/microsoft/presidio/tree/main/presidio-analyzer/presidio_analyzer/predefined_recognizers — recognizers nativos, template para escrever BR_CPF/BR_CNPJ/BR_RG/BR_PHONE do zero.
+- [ref] https://github.com/matheuscas/pycpfcnpj — validação de dígitos verificadores CPF/CNPJ; usado dentro dos custom recognizers BR.
 - [oficial] https://spacy.io/models/pt — `pt_core_news_lg` usado como NLP engine do Presidio em PT-BR.
 
 ## Jinja2 e geração de código Python
@@ -66,13 +69,15 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 
 - [oficial] https://docs.astral.sh/uv/ — documentação oficial.
 - [oficial] https://docs.astral.sh/uv/concepts/projects/ — `pyproject.toml` por projeto + `uv.lock`.
+- [oficial] https://docs.astral.sh/uv/concepts/projects/workspaces/ — workspaces (opcional — auditoria 2026-04 confirmou viabilidade como melhoria futura; ver `DESIGN_AUDIT.md` C8).
 - [blog] https://astral.sh/blog/uv — anúncio e motivação.
 
 ## Google Gemini (LLM)
 
-- [oficial] https://ai.google.dev/gemini-api/docs — documentação da API; ADR-0005 usa `gemini-2.0-flash` via `GOOGLE_API_KEY`.
+- [oficial] https://ai.google.dev/gemini-api/docs — documentação da API.
+- [oficial] https://ai.google.dev/gemini-api/docs/models — matriz de modelos; em 2026-04, `gemini-2.5-flash` é o stable recomendado (ADR-0005). `gemini-2.0-flash` está marcado como deprecated.
 - [oficial] https://ai.google.dev/gemini-api/docs/quickstart — quickstart com API key (`GOOGLE_GENAI_USE_VERTEXAI=FALSE`).
-- [oficial] https://google.github.io/adk-docs/get-started/quickstart/#gemini---google-ai-studio — integração ADK ↔ Gemini API key.
+- [oficial] https://adk.dev/get-started/quickstart/#gemini---google-ai-studio — integração ADK ↔ Gemini API key.
 
 ## GitHub Actions (CI)
 
