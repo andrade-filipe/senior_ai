@@ -1,0 +1,98 @@
+# requires docker compose v2.20+
+# Usage:
+#   docker compose up -d ocr-mcp rag-mcp scheduling-api   # bring up infra
+#   docker compose run --rm generated-agent --image /fixtures/sample_medical_order.png
+#
+# All services resolve each other via Docker Compose DNS (service name = hostname).
+# Only scheduling-api exposes a port to the host (AC7).
+# See docs/ARCHITECTURE.md § "Variáveis de ambiente" for env var reference.
+
+services:
+
+  # --------------------------------------------------------------------------
+  # ocr-mcp — FastMCP SSE OCR server (ADR-0001)
+  # Internal only: no ports: block (AC7).  MCPs use service_started (ADR-0001).
+  # --------------------------------------------------------------------------
+  ocr-mcp:
+    build:
+      context: .
+      dockerfile: ocr_mcp/Dockerfile
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      PII_DEFAULT_LANGUAGE: "${PII_DEFAULT_LANGUAGE:-pt}"
+    # No ports: MCPs are internal only (AC7, GUIDELINES §3)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/sse', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: on-failure:3
+
+  # --------------------------------------------------------------------------
+  # rag-mcp — FastMCP SSE RAG server (ADR-0007)
+  # Internal only: no ports: block (AC7).
+  # --------------------------------------------------------------------------
+  rag-mcp:
+    build:
+      context: .
+      dockerfile: rag_mcp/Dockerfile
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    # No ports: MCPs are internal only (AC7)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/sse', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: on-failure:3
+
+  # --------------------------------------------------------------------------
+  # scheduling-api — FastAPI appointment service (port 8000 exposed to host)
+  # --------------------------------------------------------------------------
+  scheduling-api:
+    build:
+      context: .
+      dockerfile: scheduling_api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    restart: on-failure:3
+
+  # --------------------------------------------------------------------------
+  # generated-agent — ADK CLI agent (one-shot; run via docker compose run)
+  # Waits for scheduling-api to be healthy; MCPs use service_started (AC9).
+  # No ports exposed (AC7). Fixtures mounted read-only (AC12).
+  # --------------------------------------------------------------------------
+  generated-agent:
+    build:
+      context: .
+      dockerfile: generated_agent/Dockerfile
+    env_file:
+      - .env
+    environment:
+      # Compose DNS names override any localhost values from .env (AC10)
+      OCR_MCP_URL: "http://ocr-mcp:8001/sse"
+      RAG_MCP_URL: "http://rag-mcp:8002/sse"
+      SCHEDULING_OPENAPI_URL: "http://scheduling-api:8000/openapi.json"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      GOOGLE_GENAI_USE_VERTEXAI: "FALSE"
+    depends_on:
+      scheduling-api:
+        condition: service_healthy        # API must be healthy (AC9)
+      ocr-mcp:
+        condition: service_started        # MCP SSE has no /health (AC9, ADR-0001)
+      rag-mcp:
+        condition: service_started        # MCP SSE has no /health (AC9, ADR-0001)
+    volumes:
+      - ./docs/fixtures:/fixtures:ro      # sample_medical_order.png available at /fixtures (AC12)
+    # No ports — one-shot CLI, no listening socket
+    # No restart policy — one-shot; caller sees exit code
