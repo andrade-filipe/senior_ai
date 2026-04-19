@@ -1,25 +1,25 @@
 FROM python:3.12-slim
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install uv (ADR-0005)
+RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Copy the security package first (dependency)
-COPY ../security /app/security
+# Copy security package (local dep — ADR-0003)
+# Build context = repo root (ocr_mcp depends on security/)
+COPY security /app/security
 
 # Copy ocr_mcp package
-COPY . /app/ocr_mcp
+COPY ocr_mcp /app/ocr_mcp
 
-# Install dependencies
-WORKDIR /app/ocr_mcp
-RUN uv sync --no-dev
+# Install production deps via uv pip install --system (ADR-0005 — NOT uv sync)
+RUN cd /app/ocr_mcp && uv pip install --system --no-cache .
 
 # SSE port (ADR-0001)
 EXPOSE 8001
 
-# Health check: HEAD /sse returns 200 or 405 (AC12)
-HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/sse')" || exit 1
+# Explicit healthcheck fields — no implicit defaults (AC15, ADR-0008)
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=15s \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/sse', timeout=2)" || exit 1
 
-CMD ["uv", "run", "python", "-m", "ocr_mcp"]
+CMD ["python", "-m", "ocr_mcp"]
