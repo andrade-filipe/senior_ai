@@ -42,7 +42,10 @@ def test_generates_package_files(spec_example_dict: dict[str, Any], tmp_path: Pa
     dest = tmp_path / "generated_agent"
     assert dest.is_dir()
 
-    required = {"__init__.py", "agent.py", "requirements.txt", "Dockerfile", ".env.example"}
+    required = {
+        "__init__.py", "agent.py", "__main__.py", "logging_.py",
+        "requirements.txt", "Dockerfile", ".env.example",
+    }
     generated = {f.name for f in dest.iterdir()}
     assert required == generated
 
@@ -386,7 +389,7 @@ def test_context_builder_produces_correct_keys(spec_example_dict: dict[str, Any]
 
     assert set(ctx.keys()) == {
         "name", "description", "model", "instruction",
-        "mcp_servers", "http_tools", "pii_enabled",
+        "mcp_servers", "http_tools", "pii_enabled", "pii_allow_list",
     }
     assert ctx["name"] == "medical-order-agent"
     assert ctx["pii_enabled"] is True
@@ -408,3 +411,61 @@ def test_context_builder_mcp_tool_filter_none() -> None:
     )
     ctx = _context(spec)
     assert ctx["mcp_servers"][0]["tool_filter"] is None
+
+
+# ---------------------------------------------------------------------------
+# BLOCKER-3 — pii_allow_list threaded through context and template
+# ---------------------------------------------------------------------------
+
+
+def test_pii_allow_list_threaded_to_context() -> None:
+    """BLOCKER-3: _context() passes pii_allow_list from spec.guardrails.pii.allow_list."""
+    spec = load_spec(
+        {
+            "name": "test-agent",
+            "description": "d",
+            "model": "gemini-2.5-flash",
+            "instruction": "i",
+            "mcp_servers": [{"name": "ocr", "url": "http://ocr:8001/sse"}],
+            "http_tools": [],
+            "guardrails": {"pii": {"enabled": True, "allow_list": ["HospitalXYZ", "Hemograma"]}},
+        }
+    )
+    ctx = _context(spec)
+    assert ctx["pii_allow_list"] == ["HospitalXYZ", "Hemograma"]
+
+
+def test_pii_allow_list_rendered_in_agent_py(tmp_path: Path) -> None:
+    """BLOCKER-3: generated agent.py contains allow_list tokens when provided."""
+    spec = load_spec(
+        {
+            "name": "test-agent",
+            "description": "d",
+            "model": "gemini-2.5-flash",
+            "instruction": "i",
+            "mcp_servers": [{"name": "ocr", "url": "http://ocr:8001/sse"}],
+            "http_tools": [],
+            "guardrails": {"pii": {"enabled": True, "allow_list": ["HospitalXYZ", "Hemograma"]}},
+        }
+    )
+    render(spec, tmp_path)
+
+    agent_py = (tmp_path / "generated_agent" / "agent.py").read_text(encoding="utf-8")
+    assert "HospitalXYZ" in agent_py, "pii_allow_list token missing from generated agent.py"
+    assert "Hemograma" in agent_py, "pii_allow_list token missing from generated agent.py"
+
+
+def test_pii_allow_list_empty_when_no_guardrails(tmp_path: Path) -> None:
+    """BLOCKER-3: pii_allow_list defaults to [] when guardrails not specified."""
+    spec = load_spec(
+        {
+            "name": "test-agent",
+            "description": "d",
+            "model": "gemini-2.5-flash",
+            "instruction": "i",
+            "mcp_servers": [{"name": "ocr", "url": "http://ocr:8001/sse"}],
+            "http_tools": [],
+        }
+    )
+    ctx = _context(spec)
+    assert ctx["pii_allow_list"] == []

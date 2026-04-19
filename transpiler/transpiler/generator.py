@@ -44,6 +44,8 @@ _IDENTIFIER_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _TEMPLATE_FILES: list[str] = [
     "__init__.py.j2",
     "agent.py.j2",
+    "__main__.py.j2",
+    "logging_.py.j2",
     "requirements.txt.j2",
     "Dockerfile.j2",
     ".env.example.j2",
@@ -53,6 +55,8 @@ _TEMPLATE_FILES: list[str] = [
 _OUTPUT_FILES: list[str] = [
     "__init__.py",
     "agent.py",
+    "__main__.py",
+    "logging_.py",
     "requirements.txt",
     "Dockerfile",
     ".env.example",
@@ -133,6 +137,12 @@ def _context(spec: AgentSpec) -> dict[str, Any]:
         for tool in spec.http_tools
     ]
 
+    pii_allow_list: list[str] = (
+        list(spec.guardrails.pii.allow_list)
+        if spec.guardrails and spec.guardrails.pii
+        else []
+    )
+
     return {
         "name": spec.name,
         "description": spec.description,
@@ -141,6 +151,7 @@ def _context(spec: AgentSpec) -> dict[str, Any]:
         "mcp_servers": mcp_list,
         "http_tools": http_list,
         "pii_enabled": spec.guardrails.pii.enabled,
+        "pii_allow_list": pii_allow_list,
     }
 
 
