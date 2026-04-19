@@ -1,0 +1,119 @@
+name,code,category,aliases
+Hemograma Completo,HMG-001,hematologia,Hemograma|HMC|CBC|Hemograma Completo com Plaquetas
+Glicemia de Jejum,GLI-001,bioquimica,Glicemia|Glicose em Jejum|Glucose Jejum
+Colesterol Total,COL-001,lipidios,Colesterol|CT
+Colesterol HDL,COL-002,lipidios,HDL|HDL-colesterol|HDL Colesterol
+Colesterol LDL,COL-003,lipidios,LDL|LDL-colesterol|LDL Colesterol
+Triglicerideos,TRG-001,lipidios,Triglicérides|Triglicerídeos|TG
+TSH,TSH-001,hormonios,Hormônio Estimulante da Tireoide|Tireotropina|Tireoide Estimulante
+T4 Livre,T4L-001,hormonios,T4 Livre|Tiroxina Livre|Free T4|FT4
+T3 Total,T3T-001,hormonios,T3 Total|Triiodotironina Total
+T3 Livre,T3L-001,hormonios,T3 Livre|Triiodotironina Livre|Free T3|FT3
+Creatinina,CRE-001,bioquimica,Creatinina Sérica|Creatinina no Sangue
+Ureia,URE-001,bioquimica,Ureia Sérica|Uréia|BUN
+Ácido Úrico,ACU-001,bioquimica,Acido Urico|Urato
+TGO,TGO-001,bioquimica,AST|Aspartato Aminotransferase|Transaminase Oxalacética
+TGP,TGP-001,bioquimica,ALT|Alanina Aminotransferase|Transaminase Pirúvica
+Gama GT,GGT-001,bioquimica,Gama-GT|GGT|Gama-Glutamil Transferase
+Fosfatase Alcalina,FAL-001,bioquimica,FA|Fosfatase Alcalina Sérica
+Bilirrubina Total,BTT-001,bioquimica,Bilirrubina Total e Frações|BT
+Bilirrubina Direta,BTD-001,bioquimica,Bilirrubina Direta|BD
+Bilirrubina Indireta,BTI-001,bioquimica,Bilirrubina Indireta|BI
+Proteínas Totais e Frações,PTF-001,bioquimica,Proteínas Totais|Albumina e Globulina|PT e Frações
+Albumina,ALB-001,bioquimica,Albumina Sérica
+Proteína C Reativa,PCR-001,inflamacao,PCR|CRP|C-Reactive Protein
+Velocidade de Hemossedimentação,VHS-001,hematologia,VHS|ESR|Hemossedimentação
+Ferritina,FER-001,hematologia,Ferritina Sérica
+Ferro Sérico,FES-001,hematologia,Ferro|Sideremia|Ferro Sanguíneo
+Capacidade de Ligação do Ferro,CLF-001,hematologia,TIBC|CTLF|Capacidade Total de Ligação de Ferro
+Vitamina B12,VB12-001,vitaminas,B12|Cobalamina|Cianocobalamina
+Ácido Fólico,FOL-001,vitaminas,Folato|Vitamina B9|Fólico
+Vitamina D,VTD-001,vitaminas,25-OH Vitamina D|Vitamina D3|Calcidiol|25-hidroxivitamina D
+Sódio,SOD-001,eletrolitose,Na|Sódio Sérico|Natremia
+Potássio,POT-001,eletrolitose,K|Potássio Sérico|Calemia
+Cálcio Total,CAT-001,eletrolitose,Cálcio|Ca Total|Calcemia
+Fósforo,FOS-001,eletrolitose,Fosfato|P|Fósforo Sérico
+Magnésio,MAG-001,eletrolitose,Mg|Magnésio Sérico
+Cloro,CLO-001,eletrolitose,Cl|Cloreto Sérico
+Glicemia Pós-Prandial,GPP-001,bioquimica,Glicemia Pós Prandial|Glicose 2h|Glicemia 2 horas após refeição
+Hemoglobina Glicada,HBA-001,bioquimica,HbA1c|Hemoglobina A1c|Glicohemoglobina
+Insulina Basal,INS-001,hormonios,Insulina de Jejum|Insulinemia
+Peptídeo C,PEP-001,hormonios,Peptídeo C Basal|C-peptide
+Cortisol,COR-001,hormonios,Cortisol Sérico Basal|Cortisol Matinal
+DHEA-S,DHS-001,hormonios,DHEA Sulfato|Deidroepiandrosterona Sulfato
+Testosterona Total,TST-001,hormonios,Testosterona|Testosterone Total
+Testosterona Livre,TSL-001,hormonios,Testosterona Livre|Free Testosterone
+LH,LHH-001,hormonios,Hormônio Luteinizante|Luteinizing Hormone
+FSH,FSH-001,hormonios,Hormônio Folículo-Estimulante|Follicle Stimulating Hormone
+Estradiol,EST-001,hormonios,Estradiol E2|17-beta estradiol
+Progesterona,PRG-001,hormonios,Progesterona Sérica
+Prolactina,PRL-001,hormonios,Prolactina Sérica|PRL
+Beta HCG Quantitativo,HCG-001,hormonios,Beta-HCG|HCG Quantitativo|Gonadotrofina Coriônica
+CA 125,CA125-001,oncologia,Antígeno CA 125|Cancer Antigen 125
+CA 19-9,CA199-001,oncologia,Antígeno CA 19-9|Cancer Antigen 19-9
+CEA,CEA-001,oncologia,Antígeno Carcinoembrionário|Carcinoembryonic Antigen
+PSA Total,PSA-001,oncologia,PSA|Antígeno Prostático Específico|Prostate Specific Antigen
+PSA Livre,PSAL-001,oncologia,PSA Livre|Free PSA|Antígeno Prostático Livre
+AFP,AFP-001,oncologia,Alfa-Fetoproteína|Alpha-Fetoprotein
+Anticorpo anti-TPO,ATPO-001,autoimunidade,Anti-TPO|Anticorpo Anti-Peroxidase Tireoidiana
+Anticorpo anti-Tireoglobulina,ATG-001,autoimunidade,Anti-TG|Anticorpo Anti-Tireoglobulina
+Anticorpo Anti-Nuclear,ANA-001,autoimunidade,FAN|ANA|Fator Antinuclear
+Fator Reumatoide,FR-001,autoimunidade,Fator Reumatóide|Rheumatoid Factor|RF
+Urinálise,URI-001,urinanalise,Urina Rotina|Sumário de Urina|EAS|Tipo I de Urina|Exame de Urina
+Urocultura,UCL-001,microbiologia,Cultura de Urina|Urinocultura
+Coprocultura,CCL-001,microbiologia,Cultura de Fezes|Coprocultura
+Parasitológico de Fezes,PAR-001,parasitologia,Parasitológico|Exame Parasitológico de Fezes|EPF|OPG
+Hemoculturas,HCL-001,microbiologia,Hemocultura|Blood Culture
+Tempo de Protrombina,TAP-001,coagulacao,TP|Protrombina|RNI|INR|Atividade de Protrombina
+Tempo de Tromboplastina Parcial,TTPA-001,coagulacao,TTPA|TTP|PTT|Tromboplastina Parcial Ativada
+Dímero D,DIM-001,coagulacao,D-Dímero|D-dimer
+Fibrinogênio,FIB-001,coagulacao,Fibrinogênio Sérico|Fibrinogen
+Plaquetas,PLQ-001,hematologia,Contagem de Plaquetas|Trombócitos|Thrombocytes
+Reticulócitos,RET-001,hematologia,Contagem de Reticulócitos|Reticulocytes
+Eletroforese de Proteínas,ELP-001,bioquimica,Eletroforese de Proteínas Séricas|Electroforesis
+Anti-HIV,HIV-001,microbiologia,Teste HIV|Anticorpo Anti-HIV 1 e 2|HIV Screening
+HBsAg,HBS-001,microbiologia,Antígeno de Superfície da Hepatite B|Hepatite B Antígeno
+Anti-HBs,AHBS-001,microbiologia,Anticorpo Anti-HBs|Hepatite B Anticorpo Superfície
+Anti-HCV,HCV-001,microbiologia,Anticorpo Anti-Hepatite C|Hepatite C|HCV
+VDRL,VDR-001,microbiologia,Sífilis|Teste VDRL|Veneral Disease Research Laboratory
+Toxoplasmose IgG,TGGG-001,microbiologia,Toxoplasma IgG|Anti-Toxoplasma IgG
+Toxoplasmose IgM,TGGM-001,microbiologia,Toxoplasma IgM|Anti-Toxoplasma IgM
+Citomegalovírus IgG,CMVG-001,microbiologia,CMV IgG|Anti-CMV IgG
+Citomegalovírus IgM,CMVM-001,microbiologia,CMV IgM|Anti-CMV IgM
+Rubéola IgG,RUBG-001,microbiologia,Anti-Rubéola IgG|Rubeola IgG
+Rubéola IgM,RUBM-001,microbiologia,Anti-Rubéola IgM|Rubeola IgM
+Raio-X de Tórax,RXT-001,imagem,RX Tórax|Radiografia de Tórax|Chest X-Ray
+Raio-X de Abdome,RXA-001,imagem,RX Abdome|Radiografia de Abdome
+Raio-X de Coluna Lombar,RXCL-001,imagem,RX Coluna Lombar|Radiografia Coluna Lombar
+Ultrassonografia Abdominal,USA-001,imagem,Ultrassom Abdominal|USG Abdome|Ecografia Abdominal
+Ultrassonografia Pélvica,USP-001,imagem,Ultrassom Pélvico|USG Pélvico|Ecografia Pélvica
+Ultrassonografia de Tireoide,UST-001,imagem,Ultrassom de Tireoide|USG Tireoide
+Mamografia,MAM-001,imagem,Mamografia Bilateral|Mammography
+Densitometria Óssea,DEN-001,imagem,Densitometria|DEXA|Osteodensitometria
+Eletrocardiograma,ECG-001,cardiologia,ECG|Eletrocardiograma de Repouso|EKG
+Ecocardiograma,ECO-001,cardiologia,Ecocardiograma Transtorácico|ETT|Echo Cardíaco
+Holter 24h,HOL-001,cardiologia,Holter|Monitor Holter 24 horas
+Espirometria,ESP-001,pneumologia,Prova de Função Pulmonar|PFP|Spirometry
+BHCG Qualitativo,BHCQ-001,hormonios,Teste de Gravidez|Pregnancy Test|Beta HCG Qualitativo
+Microalbuminúria,MAU-001,urinanalise,Microalbuminuria|Albumina Urinária|Albumina na Urina
+Clearance de Creatinina,CLCR-001,bioquimica,Depuração de Creatinina|Creatinine Clearance
+Osmolalidade Urinária,OSM-001,urinanalise,Osmolalidade da Urina|Urine Osmolality
+Sódio Urinário,SODR-001,urinanalise,Sódio na Urina|Na Urinário
+Amilase,AMI-001,bioquimica,Amilase Sérica|Amylase
+Lipase,LIP-001,bioquimica,Lipase Sérica|Lipase Pancreática
+Cálcio Urinário,CAU-001,urinanalise,Cálcio na Urina|Calciúria
+Proteína Total Urinária,PTU-001,urinanalise,Proteinúria 24h|Proteínas na Urina 24 horas
+Ácido Valpróico,AVL-001,farmacocinetica,Valproato|Valproic Acid|Depakene
+Ciclosporina,CSP-001,farmacocinetica,Ciclosporina Sérica|Cyclosporine
+Tacrolimus,TAC-001,farmacocinetica,FK506|Tacrolimus Sérico
+Vancocinemia,VAN-001,farmacocinetica,Vancomicina Sérica|Vancomycin Level
+Digoxina,DIG-001,farmacocinetica,Digoxina Sérica|Digoxin Level
+Genótipo HLA B27,HLA-001,imunogenética,HLA-B27|Antígeno Leucocitário Humano B27
+Anticorpo Anti-CCP,ACCP-001,autoimunidade,Anti-CCP|Anti Peptídeo Citrulinado Cíclico|Anti-citrullinated peptide
+Imunoglobulinas,IGG-001,imunologia,IgG IgA IgM|Imunoglobulinas Séricas|Dosagem de Imunoglobulinas
+Complemento C3,C3-001,imunologia,C3|Complemento C3
+Complemento C4,C4-001,imunologia,C4|Complemento C4
+Contagem de CD4,CD4-001,imunologia,Linfócitos CD4|Contagem CD4+
+Carga Viral HIV,CVH-001,virologia,Carga Viral|HIV RNA|HIV Viral Load
+PCR para COVID-19,COV-001,virologia,RT-PCR SARS-CoV-2|PCR COVID|Swab COVID-19
+Sorologia para Dengue,DEN-002,virologia,Dengue NS1|IgM Dengue|IgG Dengue|Dengue Antígeno

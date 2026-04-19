@@ -118,6 +118,8 @@ Fontes públicas consideradas para popular o CSV do RAG MCP (ADR-0007 § "Fonte 
 - [oficial] https://www.gov.br/ans/pt-br/acesso-a-informacao/participacao-da-sociedade/atualizacao-do-rol-de-procedimentos — ANS, rol de procedimentos (TUSS) — saúde suplementar, fallback para bioquímica mais granular.
 - [ref] https://loinc.org/international/brazil/ — LOINC PT-BR. **REJEITADO** (ADR-0007): licença Regenstrief com cláusulas de redistribuição controlada + overkill para MVP (60–70k termos vs ≥ 120 necessários).
 
+**Uso no Bloco 0003** (data de acesso: 2026-04-19): o catálogo `rag_mcp/data/exams.csv` foi criado manualmente derivando nomenclaturas e categorias de exames laboratoriais e de imagem comuns da tabela SIGTAP. Os nomes canônicos, categorias clínicas (hematologia, bioquímica, hormônios, etc.) e siglas comuns (aliases) foram baseados na nomenclatura do SUS (SIGTAP/DATASUS) e do rol ANS/TUSS. Nenhum dado de paciente incluído — apenas nomenclatura pública de procedimentos. Fonte primária: https://datasus.saude.gov.br/sigtap/ | Fallback verificado: https://dados.gov.br/ | Licença: domínio público (LAI).
+
 ## Design by Contract (DbC)
 
 Bases teóricas + ferramentas concretas para a disciplina declarada em `ai-context/GUIDELINES.md § 10` e aplicada na seção "Design by Contract" de cada `docs/specs/NNNN-<slug>/plan.md`.
