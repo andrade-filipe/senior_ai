@@ -162,6 +162,67 @@ def test_exit_error_includes_correlation_id() -> None:
     assert data["correlation_id"] == "specific-uuid-here"
 
 
+def test_run_agent_closes_toolsets_on_timeout() -> None:
+    """MAJOR-4 (round-2): _run_agent's try/finally awaits toolset.close() on timeout.
+
+    Uses a stub LlmAgent with two fake toolsets. A stub runner.run_async generator
+    sleeps past the (monkeypatched) agent timeout; assert both toolsets' close()
+    was awaited even though the coroutine was cancelled.
+    """
+    import asyncio as _asyncio
+
+    closed: list[str] = []
+
+    class _FakeToolset:
+        def __init__(self, name: str) -> None:
+            self._name = name
+
+        async def close(self) -> None:
+            closed.append(self._name)
+
+    fake_toolsets = [_FakeToolset("ocr"), _FakeToolset("rag")]
+
+    class _FakeSession:
+        id = "sess-timeout"
+
+    class _FakeSessionService:
+        async def create_session(self, app_name: str, user_id: str) -> _FakeSession:
+            return _FakeSession()
+
+    class _FakeRunner:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            pass
+
+        async def run_async(self, **kwargs: object):  # type: ignore[no-untyped-def]
+            await _asyncio.sleep(10.0)  # would block past timeout
+            yield None  # pragma: no cover
+
+    class _FakeLlmAgent:
+        tools = fake_toolsets
+
+    from generated_agent import __main__ as runner_mod
+    from generated_agent import agent as agent_mod
+
+    with patch.object(agent_mod, "_build_agent", return_value=_FakeLlmAgent()):
+        with patch("google.adk.runners.Runner", _FakeRunner):
+            with patch("google.adk.sessions.InMemorySessionService", _FakeSessionService):
+                async def _run_with_short_timeout() -> None:
+                    await _asyncio.wait_for(
+                        runner_mod._run_agent(b"fakebytes", "cid-timeout"),
+                        timeout=0.1,
+                    )
+
+                try:
+                    _asyncio.run(_run_with_short_timeout())
+                except (TimeoutError, _asyncio.TimeoutError):
+                    pass
+
+    # If cleanup ran, both fake toolsets recorded a close() call.
+    assert set(closed) == {"ocr", "rag"}, (
+        f"Expected both toolsets closed on timeout, got {closed}"
+    )
+
+
 def test_exit_error_input_not_found() -> None:
     """MAJOR-3: missing file uses E_AGENT_INPUT_NOT_FOUND, not E_AGENT_OUTPUT_INVALID."""
     buf = StringIO()

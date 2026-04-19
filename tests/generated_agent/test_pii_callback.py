@@ -256,6 +256,8 @@ def test_callback_registered_on_root_agent() -> None:
         import importlib
 
         agent_mod = importlib.import_module("generated_agent.agent")
+        # root_agent is lazy (MAJOR-5 round-2); access triggers _build_agent("boot")
+        _ = agent_mod.root_agent
 
     cb = recorded.get("before_model_callback")
     assert cb is not None, "before_model_callback not registered on root_agent (ADR-0003)"

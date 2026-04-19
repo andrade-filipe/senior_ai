@@ -160,6 +160,12 @@ def _build_agent(correlation_id: str) -> LlmAgent:
 
 
 # Module-level root_agent for `adk web` / `adk run` dev-server discovery.
-# Initialised with correlation_id="boot" — NOT for production use.
-# Production entry point uses _build_agent(correlation_id) called from main().
-root_agent = _build_agent("boot")
+# LAZY: built on first attribute access so `import generated_agent.agent` does
+# not trigger a 10s blocking httpx.get at import time (MAJOR-5 round-2 fix).
+# Production entry point uses _build_agent(correlation_id) from main().
+def __getattr__(name: str) -> Any:
+    if name == "root_agent":
+        agent = _build_agent("boot")
+        globals()["root_agent"] = agent
+        return agent
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
