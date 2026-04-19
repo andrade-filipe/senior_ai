@@ -1,0 +1,51 @@
+# Python build artifacts
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/*$py.class
+**/*.so
+**/.mypy_cache/
+**/.ruff_cache/
+**/.pytest_cache/
+**/.coverage
+**/coverage.xml
+**/htmlcov/
+**/*.egg-info/
+**/dist/
+**/build/
+
+# Virtual environments (never copy into build context)
+**/.venv/
+**/venv/
+**/env/
+
+# Secrets — never embed in image (AC13)
+.env
+.env.*
+!.env.example
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Human documentation (not needed at runtime)
+docs/
+ai-context/
+
+# Test suites (not shipped in production image — AC4)
+tests/
+
+# IDE and editor noise
+.idea/
+.vscode/
+*.swp
+*~
+
+# CI
+.github/
+
+# Root-level dev artefacts
+notes.md
+CLAUDE.md
+DESAFIO_SENIOR_IA.pdf
