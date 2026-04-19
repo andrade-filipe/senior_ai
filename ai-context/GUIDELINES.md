@@ -80,6 +80,7 @@ Explicitamente **dispensados**: SOLID (código é procedural), Object Calistheni
   - `test(mcp): add ocr-mcp integration smoke test`
   - `chore(docker): bump python base image`
 - **Tamanho**: commits pequenos e focados. Um commit = uma ideia revisável.
+- **História**: a sequência de commits deve contar a evolução do software de forma legível como narrativa. Ordem típica: contratos/specs/ADRs → código que implementa → testes que validam → evidências. Agrupe por tema ou camada; não misture intenções distintas no mesmo commit.
 - **Mensagens**: corpo opcional explicando *por que*, não *o que*. Commits de implementação citam ID da task (`T020`) ou AC do spec.
 - **`.env` e artefatos gerados** nunca entram no git (ver `.gitignore`).
 - **CI gate** ([ADR-0005](../docs/adr/0005-dev-stack.md)): `.github/workflows/ci.yml` roda `ruff check`, `ruff format --check`, `mypy`, `pytest --cov --cov-fail-under=80`, `docker build` em cada push/PR. **PR não merge se CI falhar** — nenhuma exceção; se CI está errado, corrige o CI.
