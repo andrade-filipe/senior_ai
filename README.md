@@ -81,7 +81,20 @@ Cinco serviços na rede do Compose, mais o transpilador que roda em build-time:
   transpiler (build-time)  —  spec.json ──▶ generated_agent/
 ```
 
-Única porta publicada ao host é `scheduling-api:8000` (para expor Swagger). OCR e RAG só são acessíveis dentro da rede Compose, o que impede acesso direto bypassando o agente. Detalhes de contratos (schemas, taxonomia de erros, formato de log estruturado, guardrails) em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Única porta publicada ao host é `scheduling-api:8000` (para expor Swagger). OCR e RAG só são acessíveis dentro da rede Compose, o que impede acesso direto bypassando o agente. Detalhes de contratos (schemas, taxonomia de erros, formato de log estruturado, guardrails) em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); narrativa ponta a ponta do fluxo em [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+
+## Onde encontrar o quê
+
+| Quero… | Onde olhar |
+|---|---|
+| Rodar rapidamente | [Quickstart](#quickstart) acima. |
+| Entender o que acontece passo a passo quando o agente roda | [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md). |
+| Chamar uma funcionalidade isolada (transpilador, OCR, RAG, API, agente, PII) | [`docs/tutorials/`](docs/tutorials/README.md) — seis tutoriais focados. |
+| Executar o E2E manual com Gemini real (T021) | [`docs/runbooks/e2e-manual-gemini.md`](docs/runbooks/e2e-manual-gemini.md). |
+| Consultar decisões arquiteturais | [`docs/adr/`](docs/adr/). |
+| Verificar evidências de funcionamento por bloco | [`docs/EVIDENCE/`](docs/EVIDENCE/). |
+| Rastrear requisitos originais do desafio | [`docs/DESAFIO.md`](docs/DESAFIO.md) + [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md). |
+| Ver as fontes externas que apoiaram as decisões | [`docs/REFERENCES.md`](docs/REFERENCES.md). |
 
 ## Estrutura do repositório
 
@@ -171,6 +184,45 @@ Paralelo a `docs/` (entrega humana), existe `ai-context/` como memória operacio
 - [`ai-context/LINKS.md`](ai-context/LINKS.md) — log auditável de **toda fonte externa** consultada (ADK, MCP, Presidio, rapidfuzz, papers agentic). Cada decisão técnica tem a fonte primária rastreável.
 - [`ai-context/references/DESIGN_AUDIT.md`](ai-context/references/DESIGN_AUDIT.md) — auditoria crítica do design pré-implementação. Capturou e corrigiu: Gemini `2.0-flash` deprecated → `2.5-flash`; `SseConnectionParams` renomeado no ADK → `StreamableHTTPConnectionParams`; Presidio BR recognizers documentados como custom.
 - [`ai-context/references/AGENTIC_PATTERNS.md`](ai-context/references/AGENTIC_PATTERNS.md) — racional técnico dos padrões agentic adotados (Tool Use, Guardrails, Basic RAG, Plan-then-Execute, Human-in-the-Loop).
+
+### Estratégia de orquestração do agente (runtime)
+
+O agente gerado é um **`LlmAgent` único** do Google ADK (não há sub-agentes nem multi-agent hierarchy em runtime). A orquestração acontece por **tool-use sequencial** guiado por `instruction` fixa: o LLM (Gemini 2.5 Flash) recebe o texto mascarado do OCR e decide a ordem das chamadas de tools, mas o contrato de fluxo está ancorado em [ADR-0006](docs/adr/0006-spec-schema-and-agent-topology.md) e formaliza a sequência obrigatória:
+
+```
+  --image  ──▶  OCR MCP (tool)  ──▶  PII mask Layer 1
+                                            │
+                                            ▼
+                              PII mask Layer 2 (before_model_callback ADK)
+                                            │
+                                            ▼
+                                    LLM planeja (Gemini)
+                                            │
+                                            ▼
+                          RAG MCP × N (uma chamada por exame)
+                                            │
+                                            ▼
+                        POST /api/v1/appointments (scheduling-api)
+                                            │
+                                            ▼
+                         Tabela ASCII no stdout + exit 0
+```
+
+Um único agente, três tools (`extract_exams_from_image`, `search_exam_code`, `list_exams`) mais o `OpenAPIToolset` da scheduling-api. Detalhe completo do fluxo — incluindo tratamento de falhas parciais, dupla camada PII e correlação via `correlation_id` — em [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) e [`docs/tutorials/05-generated-agent.md`](docs/tutorials/05-generated-agent.md).
+
+### Principais referências consultadas
+
+As decisões arquiteturais deste projeto se ancoram em documentação oficial e literatura técnica rastreável. As fontes mais load-bearing:
+
+- [Google ADK documentation](https://google.github.io/adk-docs/) — `LlmAgent`, `McpToolset`, `StreamableHTTPConnectionParams`, `before_model_callback` (ADR-0006).
+- [Model Context Protocol specification](https://modelcontextprotocol.io/) e [Python SDK (FastMCP)](https://github.com/modelcontextprotocol/python-sdk) — transporte SSE e shape das tools (ADR-0001).
+- [Microsoft Presidio](https://microsoft.github.io/presidio/) + documentação de custom recognizers — base da camada PII e dos 4 recognizers BR (ADR-0003).
+- [GitHub `spec-kit`](https://github.com/github/spec-kit) — metodologia SDD adaptada para este projeto (ADR-0004).
+- [Google AI — Gemini API](https://ai.google.dev/) — modelo `gemini-2.5-flash`, estrutura de `contents`/`parts` (ADR-0005).
+- [SIGTAP / DATASUS](http://sigtap.datasus.gov.br/) — catálogo público de nomenclatura médica brasileira usado pelo RAG (ADR-0007).
+- Livros consultados para padrões agentic: *Agentic Design Patterns* (A. Gulli), *AI Engineering* (Chip Huyen), *Building Generative AI Services with FastAPI* (V. Lakshmanan).
+
+Lista completa, agrupada por domínio e ancorada em cada ADR, em [`docs/REFERENCES.md`](docs/REFERENCES.md). Log bruto de toda fonte consultada durante o desenvolvimento — inclusive descobertas que não viraram código — em [`ai-context/LINKS.md`](ai-context/LINKS.md).
 
 ### Commits contam história
 
