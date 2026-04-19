@@ -316,6 +316,8 @@ Tabela-mestre `E_*`. Reuso proibido. Novo código exige PR que atualize esta tab
 | `E_API_NOT_FOUND` | scheduling_api | Recurso não existe (GET /{id}) | "Agendamento `<id>` não encontrado" | "Confirme o ID" |
 | `E_API_VALIDATION` | scheduling_api | Body/query inválido; `patient_ref` fora do pattern; `exams[]` vazio/duplicado; `scheduled_for` no passado/naive; caps | "Campo `<path>` inválido: `<motivo>`" | "Consulte `/docs` para o contrato" |
 | `E_API_TIMEOUT` | scheduling_api | Request > 10 s | "API não respondeu em 10 s" | "Verifique se `scheduling-api` está saudável" |
+| `E_API_PAYLOAD_TOO_LARGE` | scheduling_api | HTTP body `Content-Length` > 256 KB (middleware borda) | "Body excede o limite de 256 KB" | "Reduza o tamanho do payload" |
+| `E_API_INTERNAL` | scheduling_api | Erro interno não classificado (catch-all 500, `HTTPException` não-422 sem código domínio) | "Erro interno do servidor" | "Verifique os logs do serviço" |
 | `E_MCP_TIMEOUT` | generated_agent | MCP tool call > timeout do serviço (ver tabela Timeouts) | "MCP `<server>` não respondeu no timeout" | "Verifique se o serviço subiu (`docker compose ps`)" |
 | `E_MCP_TOOL_NOT_FOUND` | generated_agent | Tool inexistente no servidor | "Tool `<name>` não existe em `<server>`" | "Verifique `tool_filter` no spec" |
 | `E_AGENT_TIMEOUT` | generated_agent | Execução total do agente > 300 s | "Agente excedeu 300 s" | "Inspecione logs; reinicie stack" |
@@ -359,7 +361,7 @@ Variantes por transporte:
 | `exams[]` no POST | 20 itens | `E_API_VALIDATION` |
 | `spec.json` total | 1 MB | `E_TRANSPILER_SCHEMA` |
 | `agent.py` gerado | 100 KB | `E_TRANSPILER_RENDER_SIZE` |
-| HTTP body POST | 10 MB (FastAPI default) | 413 |
+| HTTP body POST | 256 KB (middleware `BodySizeLimitMiddleware`) | `E_API_PAYLOAD_TOO_LARGE` |
 | `allow_list` (PII) | 1000 itens | `E_PII_ALLOW_LIST_SIZE` |
 
 Caps são verificados **na borda** — antes de decodificar, parsear ou invocar motor pesado.
