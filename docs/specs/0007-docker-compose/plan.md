@@ -148,6 +148,10 @@ Declare contratos semânticos do bloco — pré/pós/invariantes que o código d
 - **Healthcheck explícito (AC15)**: teste `yaml.safe_load` sobre `docker-compose.yml` valida que todo `healthcheck:` contém as chaves `interval`, `timeout`, `retries`, `start_period` como strings não-vazias; análogo para `HEALTHCHECK` em Dockerfiles via regex.
 - **Hardening de privilégios (AC16)**: teste `yaml.safe_load` valida que nenhum serviço tem `privileged: true`, `network_mode: host`, nem volume mapeando `/var/run/docker.sock`.
 
+## Notas operacionais
+
+- **Onde correm os testes de infra**: `tests/infra/` mora na raiz, mas o arnês é o venv do `scheduling_api` — `pyyaml>=6` foi adicionado ao seu `[dependency-groups].dev` (não à imagem de produção; apenas harness de teste). Racional: evita criar um pyproject raiz só para isto e mantém a política ADR-0005 "pyproject.toml por serviço". Se o CI futuramente separar jobs por serviço e estes testes precisarem correr fora do job de `scheduling_api`, mover o `pyyaml` para um `[dependency-groups].infra` em qualquer pyproject de serviço (ou criar um grupo compartilhado) fecha a dívida. Registrado como MINOR no review do 0007.
+
 ## Dependências entre blocos
 
 - **Depende, em código/artefatos** — precisa que Blocos 3, 4, 5, 6 tenham Dockerfiles próprios (cada engenheiro entrega o `Dockerfile` do seu serviço junto com o código; devops-engineer **consolida** e escreve o compose).
