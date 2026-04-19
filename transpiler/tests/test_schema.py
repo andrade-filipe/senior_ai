@@ -260,10 +260,12 @@ def test_list_caps_enforced(spec_example_dict: dict[str, Any]) -> None:
 
 
 def test_string_caps_enforced(spec_example_dict: dict[str, Any]) -> None:
-    """AC11 — strings exceeding 500 chars (or URLs > 2048) raise TranspilerError.
+    """AC11 — strings exceeding caps (or URLs > 2048) raise TranspilerError.
 
-    DbC: AgentSpec.Invariant and McpServerSpec.Invariant — description,
-    instruction ≤ 500 chars; url/base_url/openapi_url ≤ 2048 chars (ADR-0008).
+    DbC: AgentSpec.Invariant and McpServerSpec.Invariant:
+        - description ≤ 500 chars (ADR-0008)
+        - instruction ≤ 4096 bytes UTF-8 (ADR-0008 / AC20, updated from 500)
+        - url/base_url/openapi_url ≤ 2048 chars (ADR-0008)
     Error message or context must reference the cap value.
     """
     long_str = "a" * 501
@@ -277,14 +279,14 @@ def test_string_caps_enforced(spec_example_dict: dict[str, Any]) -> None:
     assert err.code == "E_TRANSPILER_SCHEMA"
     assert "500" in err.message or "500" in str(err.context)
 
-    # instruction > 500 chars
+    # instruction > 4096 bytes UTF-8 (ADR-0008 / AC20 — updated cap)
     bad_instruction = deepcopy(spec_example_dict)
-    bad_instruction["instruction"] = long_str
+    bad_instruction["instruction"] = "a" * 4097  # 4097 ASCII bytes > 4096 cap
     with pytest.raises(TranspilerError) as exc_info:
         load_spec(bad_instruction)
     err = exc_info.value
     assert err.code == "E_TRANSPILER_SCHEMA"
-    assert "500" in err.message or "500" in str(err.context)
+    assert "4096" in err.message or "instruction" in err.message.lower()
 
     # URL > 2048 chars in mcp_servers[].url
     long_url = "http://host:8001/" + "a" * 2032  # total length > 2048

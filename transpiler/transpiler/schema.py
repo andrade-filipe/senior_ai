@@ -63,7 +63,7 @@ BoundedUrl = Annotated[
 
 _MAX_NAME_LEN = 500
 _MAX_DESC_LEN = 500
-_MAX_INSTRUCTION_LEN = 500
+_MAX_INSTRUCTION_BYTES = 4096  # ADR-0008 / AC20 — UTF-8 byte cap for Gemini prompt cache
 _MAX_MCP_SERVERS = 10
 _MAX_HTTP_TOOLS = 20
 _MAX_TOOL_FILTER = 50
@@ -149,7 +149,8 @@ class AgentSpec(BaseModel):
     Invariant:
         - model must be 'gemini-2.5-flash' (ADR-0006 allowlist, ADR-0005).
         - name matches ^[a-z0-9][a-z0-9-]*$ and is ≤ 500 chars.
-        - description and instruction are ≤ 500 chars.
+        - description is ≤ 500 chars.
+        - instruction is ≤ 4096 bytes UTF-8 (ADR-0008 / AC20).
         - At least one of mcp_servers, http_tools must be non-empty (AC5).
         - mcp_servers has at most 10 items; http_tools at most 20 items (ADR-0008).
         - mcp_servers[*].name is unique within this spec (AC9).
@@ -173,8 +174,7 @@ class AgentSpec(BaseModel):
         description="LLM model identifier. Literal forces a conscious ADR when changing models.",
     )
     instruction: str = Field(
-        max_length=_MAX_INSTRUCTION_LEN,
-        description="System prompt / instruction for the LlmAgent (imperative style).",
+        description="System prompt / instruction for the LlmAgent (imperative style, ≤ 4096 bytes UTF-8 per ADR-0008).",
     )
     mcp_servers: list[McpServerSpec] = Field(
         default_factory=list,
@@ -193,15 +193,25 @@ class AgentSpec(BaseModel):
 
     @model_validator(mode="after")
     def _check_invariants(self) -> "AgentSpec":
-        """Enforce AgentSpec cross-field invariants (AC5, AC9).
+        """Enforce AgentSpec cross-field invariants (AC5, AC9, AC20).
 
         Invariant:
             - At least one of mcp_servers / http_tools must be non-empty (AC5).
             - mcp_servers[*].name must be unique (AC9).
+            - instruction must be ≤ 4096 bytes UTF-8 (ADR-0008 / AC20).
 
         Raises:
             ValueError: when an invariant is violated.
         """
+        # AC20: instruction byte cap (ADR-0008)
+        byte_len = len(self.instruction.encode("utf-8"))
+        if byte_len > _MAX_INSTRUCTION_BYTES:
+            raise ValueError(
+                f"Campo 'instruction' excede {_MAX_INSTRUCTION_BYTES} bytes UTF-8 "
+                f"(observado: {byte_len} bytes). "
+                f"Reduza o texto da instrução conforme o cap definido em ADR-0008."
+            )
+
         # AC5: at least one source of tools
         if not self.mcp_servers and not self.http_tools:
             raise ValueError(
