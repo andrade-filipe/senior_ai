@@ -18,7 +18,15 @@ dev = [
     "mypy>=1.10.0",
     "ruff>=0.4.0",
     "pyyaml>=6.0.0",
+    # transpiler is needed by tests/infra/test_fixtures.py (AC8) which validates
+    # spec.example.json against AgentSpec.  Editable + relative source keeps
+    # transpiler/pyproject.toml as the single source of truth and works on any
+    # host (Windows, Linux CI, other devs).
+    "transpiler",
 ]
+
+[tool.uv.sources]
+transpiler = { path = "../transpiler", editable = true }
 
 [build-system]
 requires = ["hatchling"]
@@ -29,8 +37,19 @@ packages = ["scheduling_api"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["../tests/scheduling_api"]
+# testpaths covers both scheduling_api unit/integration tests and the shared
+# infra + e2e suites.  E2E tests are gated by @pytest.mark.e2e_ci so they are
+# not executed in the normal unit pass (omit -m e2e_ci to run only unit tests).
+testpaths = ["../tests/scheduling_api", "../tests/infra", "../tests/e2e"]
 addopts = "--cov=scheduling_api --cov-report=term-missing"
+# Marker registration here is the canonical anchor for all shared markers.
+# tests/e2e/conftest.py also calls config.addinivalue_line for the same markers
+# so that running pytest tests/e2e directly (without this pyproject) still works.
+markers = [
+    "e2e_ci: compose + healthchecks + service suites without real Gemini call",
+    "e2e_full: full manual E2E with real Gemini call (not run in CI by default)",
+    "infra: mark test as requiring a Docker daemon (skipped in unit pass)",
+]
 
 [tool.mypy]
 python_version = "3.12"
