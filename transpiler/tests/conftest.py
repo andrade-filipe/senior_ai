@@ -2,12 +2,23 @@
 
 spec_example_dict is a literal copy of the spec.example.json block
 from docs/ARCHITECTURE.md § "Schema Pydantic do JSON spec".
+
+Snapshot tests (test_snapshots.py) use pytest-regressions. On first run,
+data files are created and the tests pass once with --gen-files. On
+subsequent runs, they compare against the committed snapshot files.
 """
 
-from copy import deepcopy
 from typing import Any
 
 import pytest
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom markers."""
+    config.addinivalue_line(
+        "markers",
+        "snapshot: mark test as a snapshot test (requires --force-regen on first run)",
+    )
 
 
 @pytest.fixture

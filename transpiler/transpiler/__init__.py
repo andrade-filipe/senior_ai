@@ -13,9 +13,11 @@ Exports:
     TranspilerError — Exception raised by the transpiler module.
     ChallengeError  — Base exception for all challenge services.
     format_challenge_error — Serialize a ChallengeError to canonical dict shape.
+    render          — Render an AgentSpec to a generated_agent/ package.
 """
 
 from transpiler.errors import ChallengeError, TranspilerError, format_challenge_error
+from transpiler.generator import render
 from transpiler.schema import (
     AgentSpec,
     GuardrailSpec,
@@ -35,4 +37,5 @@ __all__ = [
     "TranspilerError",
     "ChallengeError",
     "format_challenge_error",
+    "render",
 ]
