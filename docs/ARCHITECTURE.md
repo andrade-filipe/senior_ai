@@ -312,6 +312,7 @@ Tabela-mestre `E_*`. Reuso proibido. Novo código exige PR que atualize esta tab
 | `E_PII_LANGUAGE` | security | Idioma fora de `{pt, en}` | "Idioma `<lang>` não suportado" | "Use `pt` ou `en`" |
 | `E_PII_TEXT_SIZE` | security | `text` > 100 KB em `pii_mask` | "Texto excede 100 KB" | "Divida em chunks menores ou reduza o input" |
 | `E_PII_ALLOW_LIST_SIZE` | security | `allow_list` > 1000 itens | "`allow_list` excede 1000 itens" | "Revise a lista — use categorias canônicas" |
+| `E_PII_TIMEOUT` | security | `pii_mask` excede 5 s de processamento | "`pii_mask` excedeu 5 s" | "Divida o texto em chunks menores; verifique saúde do motor Presidio" |
 | `E_API_NOT_FOUND` | scheduling_api | Recurso não existe (GET /{id}) | "Agendamento `<id>` não encontrado" | "Confirme o ID" |
 | `E_API_VALIDATION` | scheduling_api | Body/query inválido; `patient_ref` fora do pattern; `exams[]` vazio/duplicado; `scheduled_for` no passado/naive; caps | "Campo `<path>` inválido: `<motivo>`" | "Consulte `/docs` para o contrato" |
 | `E_API_TIMEOUT` | scheduling_api | Request > 10 s | "API não respondeu em 10 s" | "Verifique se `scheduling-api` está saudável" |
@@ -370,6 +371,7 @@ Caps são verificados **na borda** — antes de decodificar, parsear ou invocar 
 | OCR tool call | 5 s | `E_OCR_TIMEOUT` |
 | RAG tool call | 2 s | `E_RAG_TIMEOUT` |
 | POST `/api/v1/appointments` | 10 s | `E_API_TIMEOUT` |
+| PII mask (`pii_mask`) | 5 s | `E_PII_TIMEOUT` |
 | Agente total (execução) | 300 s (5 min) | `E_AGENT_TIMEOUT` |
 | Healthcheck HTTP (compose) | 30 s total | timeout do compose |
 | Retry MCP (ADR-0006) | 1 tentativa, delay fixo 500 ms | — |

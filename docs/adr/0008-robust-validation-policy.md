@@ -96,9 +96,15 @@ Caps são checados na **borda** (antes de processar): o `text` grande **não dev
 | OCR tool call (`extract_exams_from_image`) | 5 s | `E_OCR_TIMEOUT` |
 | RAG tool call (`search_exam_code`, `list_exams`) | 2 s | `E_RAG_TIMEOUT` |
 | POST `/api/v1/appointments` | 10 s | `E_API_TIMEOUT` |
+| PII mask (`pii_mask`) | 5 s | `E_PII_TIMEOUT` |
 | Agente total (execução CLI) | 300 s (5 min) | `E_AGENT_TIMEOUT` |
 | Healthcheck HTTP (compose) | 30 s total | timeout do compose |
 | Retry MCP (policy já em ADR-0006) | delay fixo 500 ms, 1 tentativa | — |
+
+Notas de implementação relevantes:
+
+- **PII mask (`pii_mask`)**: o timeout é **hard** — precisa garantir que o trabalho em background termine ou seja abortado, não apenas que a chamada retorne no prazo. Implementação usa `multiprocessing` (worker persistente + `terminate()` no estouro), já que `threading.Thread` não pode ser cancelada em Python. Ver [spec 0005](../specs/0005-pii-guard/spec.md) AC17 e plan.
+- **OCR / RAG / API timeouts**: baseados em `httpx.Timeout` / `asyncio.wait_for`, já cooperativos por natureza.
 
 Timeout não é sinônimo de latência p95. p95 é métrica de observabilidade (NFR); timeout é **contrato de falha** — se passar, levanta `E_*_TIMEOUT` com `hint` para o chamador. Os dois coexistem.
 

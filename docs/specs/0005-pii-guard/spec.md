@@ -53,7 +53,7 @@ O desafio exige que PII (nomes, CPF/CNPJ, RG, telefones, e-mails) seja **anonimi
 - [AC13] Cobertura de testes em `security/` ≥ 80 % (ADR-0004) com cada recognizer BR cobrindo pelo menos um caso positivo + um caso negativo explícito.
 - [AC14] `pii_mask` é **idempotente** sob a propriedade: `pii_mask(pii_mask(text, language=lang).masked_text, language=lang).masked_text == pii_mask(text, language=lang).masked_text`. Aplicar a máscara duas vezes não altera o resultado — garante estabilidade da dupla camada (ADR-0003: linha 1 no OCR + linha 2 no `before_model_callback` não devem compor destrutivamente).
 - [AC15] Dado `pii_mask(text, ...)` chamado com `text` > 100 KB, quando executado, então levanta `PIIError(code="E_PII_TEXT_SIZE")` citando bytes observados vs cap conforme [ADR-0008 § Guardrails](../../adr/0008-robust-validation-policy.md); não invoca o Presidio.
-- [AC16] Dado `pii_mask(text, allow_list=[...])` com `allow_list` > 50 itens, quando executado, então levanta `PIIError(code="E_PII_ALLOW_LIST_SIZE")` citando cap.
+- [AC16] Dado `pii_mask(text, allow_list=[...])` com `allow_list` > 1000 itens, quando executado, então levanta `PIIError(code="E_PII_ALLOW_LIST_SIZE")` citando cap, conforme [ADR-0008 § Guardrails](../../adr/0008-robust-validation-policy.md).
 - [AC17] Dado que `pii_mask` excede 5 segundos de processamento, quando executado, então levanta `PIIError(code="E_PII_TIMEOUT")` conforme [ADR-0008 § Timeouts](../../adr/0008-robust-validation-policy.md).
 - [AC18] Dado qualquer log emitido por qualquer função do módulo `security/`, quando inspecionado, então **nenhum campo** contém valor PII cru — apenas `entity_type`, `sha256_prefix` (primeiros 8 chars) e contadores; reforço da regra "no-PII-in-logs" de [ADR-0008 § No-PII-in-logs](../../adr/0008-robust-validation-policy.md).
 
@@ -68,7 +68,7 @@ O desafio exige que PII (nomes, CPF/CNPJ, RG, telefones, e-mails) seja **anonimi
 | Situação | Tratamento | Código de erro | AC ref |
 |---|---|---|---|
 | `text` > 100 KB | rejeitar antes de Presidio | `E_PII_TEXT_SIZE` | AC15 |
-| `allow_list` > 50 itens | rejeitar antes de Presidio | `E_PII_ALLOW_LIST_SIZE` | AC16 |
+| `allow_list` > 1000 itens | rejeitar antes de Presidio | `E_PII_ALLOW_LIST_SIZE` | AC16 |
 | Processamento > 5 s | timeout hard | `E_PII_TIMEOUT` | AC17 |
 | `language` não-suportado | rejeitar na entrada | `E_PII_LANGUAGE` | AC3 |
 | Presidio não inicializa | erro claro | `E_PII_ENGINE` | AC4 |
@@ -79,15 +79,15 @@ O desafio exige que PII (nomes, CPF/CNPJ, RG, telefones, e-mails) seja **anonimi
 | Alvo | Cap | Violação | AC ref |
 |---|---|---|---|
 | `text` (bytes UTF-8) | 100 KB | `E_PII_TEXT_SIZE` | AC15 |
-| `allow_list` | 50 itens | `E_PII_ALLOW_LIST_SIZE` | AC16 |
+| `allow_list` | 1000 itens | `E_PII_ALLOW_LIST_SIZE` | AC16 |
 | `pii_mask` (timeout) | 5 s | `E_PII_TIMEOUT` | AC17 |
 
 ### Security & threats
 
 - **Ameaça**: cliente envia texto de 10 MB para mascarar e trava o motor Presidio.
   **Mitigação**: cap de 100 KB em bytes UTF-8 antes de invocar o motor (AC15). Motor não chega a ser chamado.
-- **Ameaça**: `allow_list` com centenas de termos genéricos (`"a"`, `"o"`, ...) neutraliza a máscara.
-  **Mitigação**: cap de 50 itens + validação do tamanho de cada termo indiretamente via schema ADR-0008 (AC16).
+- **Ameaça**: `allow_list` com milhares de termos genéricos (`"a"`, `"o"`, ...) neutraliza a máscara.
+  **Mitigação**: cap de 1000 itens conforme ADR-0008 (AC16).
 - **Ameaça**: log vaza valor cru de CPF/nome detectado via `repr` ou f-string.
   **Mitigação**: `EntityHit` **nunca** carrega `value` (AC2); auditoria usa só `sha256_prefix` (AC18); teste `caplog` garante (T023).
 
