@@ -15,6 +15,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import mimetypes
 import os
 import sys
 import typing
@@ -198,7 +199,7 @@ def _parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 
 
-async def _run_agent(image_bytes: bytes, correlation_id: str) -> Any:
+async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "image/png") -> Any:
     """Run the ADK agent with raw image bytes as an inline_data Part.
 
     Builds the agent via _build_agent(correlation_id) so every MCP connection
@@ -237,7 +238,7 @@ async def _run_agent(image_bytes: bytes, correlation_id: str) -> Any:
     # legitimate text parts, not a base64 string masquerading as text.
     image_part = genai_types.Part.from_bytes(
         data=image_bytes,
-        mime_type="image/png",
+        mime_type=mime_type,
     )
     instruction_part = genai_types.Part(
         text="Processe o pedido medico na imagem fornecida e siga o plano fixo."
@@ -356,11 +357,14 @@ def main() -> int:
     with open(image_path, "rb") as fh:
         image_bytes = fh.read()
 
+    guessed_mime, _ = mimetypes.guess_type(image_path)
+    image_mime = guessed_mime or "image/png"
+
     # Run agent with hard timeout (ADR-0008 / AC18)
     try:
         raw = asyncio.run(
             asyncio.wait_for(
-                _run_agent(image_bytes, correlation_id),
+                _run_agent(image_bytes, correlation_id, image_mime),
                 timeout=_AGENT_TIMEOUT,
             )
         )
