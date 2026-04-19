@@ -1,10 +1,13 @@
 ---
 id: 0001-agentspec-schema
 title: Schema Pydantic `AgentSpec` e validação do JSON de entrada do transpilador
-status: approved
+status: implemented
 linked_requirements: [R01]
 owner_agent: software-architect
 created: 2026-04-18
+implemented: 2026-04-18
+evidence: docs/EVIDENCE/0001-agentspec-schema.md
+commit: 9396def
 ---
 
 ## Problema
