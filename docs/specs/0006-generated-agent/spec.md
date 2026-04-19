@@ -1,7 +1,7 @@
 ---
 id: 0006-generated-agent
 title: Agente ADK end-to-end consumindo OCR + RAG + API com PII dupla camada
-status: approved
+status: implemented
 linked_requirements: [R06]
 owner_agent: software-architect
 created: 2026-04-18

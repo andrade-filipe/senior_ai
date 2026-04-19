@@ -1,7 +1,7 @@
 ---
 id: 0007-docker-compose
 title: Dockerfiles e docker-compose.yml com healthchecks para o stack completo
-status: approved
+status: implemented
 linked_requirements: [R07]
 owner_agent: software-architect
 created: 2026-04-18

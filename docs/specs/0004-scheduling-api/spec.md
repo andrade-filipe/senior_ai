@@ -1,7 +1,7 @@
 ---
 id: 0004-scheduling-api
 title: API FastAPI de agendamento com Swagger público
-status: approved
+status: implemented
 linked_requirements: [R04]
 owner_agent: software-architect
 created: 2026-04-18

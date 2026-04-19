@@ -1,7 +1,7 @@
 ---
 id: 0003-mcp-ocr-rag
 title: Servidores MCP OCR e RAG via FastMCP + SSE com mock determinístico
-status: approved
+status: implemented
 linked_requirements: [R02, R03, R11]
 owner_agent: software-architect
 created: 2026-04-18

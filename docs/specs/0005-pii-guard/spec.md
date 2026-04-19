@@ -1,7 +1,7 @@
 ---
 id: 0005-pii-guard
 title: Camada PII com Presidio + custom recognizers brasileiros
-status: approved
+status: implemented
 linked_requirements: [R05]
 owner_agent: software-architect
 created: 2026-04-18

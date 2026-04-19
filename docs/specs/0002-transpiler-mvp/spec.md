@@ -1,7 +1,7 @@
 ---
 id: 0002-transpiler-mvp
 title: Transpilador MVP — Jinja2 + generator + CLI com gate `ast.parse`
-status: approved
+status: implemented
 linked_requirements: [R01]
 owner_agent: software-architect
 created: 2026-04-18
