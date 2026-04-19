@@ -133,7 +133,7 @@ def pii_mask(text: str, language: str = "pt") -> MaskedResult:
 | `GOOGLE_API_KEY` | generated_agent | `AIza...` |
 | `OCR_MCP_URL` | generated_agent | `http://ocr-mcp:8001/sse` |
 | `RAG_MCP_URL` | generated_agent | `http://rag-mcp:8002/sse` |
-| `SCHEDULING_API_URL` | generated_agent | `http://scheduling-api:8000` |
+| `SCHEDULING_OPENAPI_URL` | generated_agent | `http://scheduling-api:8000/openapi.json` |
 | `PII_DEFAULT_LANGUAGE` | security | `pt` |
 | `LOG_LEVEL` | todos | `INFO` |
 
