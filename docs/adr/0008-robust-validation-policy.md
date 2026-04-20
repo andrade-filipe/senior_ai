@@ -1,8 +1,37 @@
 # ADR-0008: Robustez de validação — taxonomia de erros, guardrails e shape de resposta
 
-- **Status**: accepted
-- **Data**: 2026-04-18
+- **Status**: accepted (addendum 2026-04-21: exit 4 + E_AGENT_OUTPUT_REPORTED_ERROR)
+- **Data**: 2026-04-18 (addendum 2026-04-21)
 - **Autor(es)**: software-architect (decisão) + Filipe Andrade (aprovação)
+
+## Addendum 2026-04-21 — Exit code 4 e `E_AGENT_OUTPUT_REPORTED_ERROR`
+
+Spec [0009 Camada B](../specs/0009-output-hardening/spec.md) introduz um envelope `RunnerError` com discriminador `status: "error"` na saída do `LlmAgent`. Hoje a CLI do agente só sabe diferenciar:
+
+- `exit 0` — sucesso (tabela ASCII)
+- `exit 3` — `E_AGENT_OUTPUT_INVALID` (parser explodiu; bug no agente, usuário não pode agir)
+
+Falta um exit code distinto para **"agente reportou impossibilidade legítima via envelope estruturado"** — comportamento esperado (não é bug), mas também não é sucesso. Exemplo: OCR devolveu `[]`, agente reconheceu e emitiu `RunnerError(code="E_OCR_UNKNOWN_IMAGE")`.
+
+**Decisão**: reservar `exit 4` para esse caso. Novo código na taxonomia `E_*`:
+
+| Código | Módulo | Condição | Mensagem canônica | Hint |
+|---|---|---|---|---|
+| `E_AGENT_OUTPUT_REPORTED_ERROR` | `generated-agent` | Agente emitiu JSON válido com `status:"error"` (envelope `RunnerError`) | Agente não conseguiu completar o fluxo: `<error.message>` | `<error.hint>` (vindo do envelope) |
+
+Mapeamento de exit codes da CLI do agente pós-addendum:
+
+| Exit | Código | Semântica |
+|---|---|---|
+| 0 | — | Sucesso (tabela ASCII) |
+| 1 | `E_AGENT_INPUT_NOT_FOUND` | Arquivo de imagem não encontrado |
+| 2 | `E_AGENT_TIMEOUT` | Agente estourou `AGENT_TOTAL_TIMEOUT_SECONDS` |
+| 3 | `E_AGENT_OUTPUT_INVALID` | Parser Pydantic falhou (bug no agente) |
+| **4** | **`E_AGENT_OUTPUT_REPORTED_ERROR`** | **Agente reportou erro via envelope** |
+| 5 | `E_MCP_UNAVAILABLE` | MCP-SSE indisponível (spec 0010) |
+
+Exit 3 vs exit 4 importa para o operador: o primeiro pede investigação (prompt, modelo, logs); o segundo pede ação sobre o input (trocar imagem, registrar fixture nova, subir scheduling-api).
+
 
 ## Contexto
 

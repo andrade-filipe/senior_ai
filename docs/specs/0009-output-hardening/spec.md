@@ -23,6 +23,25 @@ Tarefas afetadas em `tasks.md`: T010, T011, T012, T042 passam a `deferred (super
 
 ---
 
+## Atualização 2026-04-21 — Camada D (prompt hardening) + fence stripping
+
+Evidência do E2E 2026-04-20 com `gemini-2.5-pro` (logs `20ea3e34-d4d6-…`): todo o pipeline determinístico funcionou (Tesseract extraiu 4 linhas, RAG absorveu typos `Hemegrama→Hemograma 0.94`, PII mascarou endereço como `<LOCATION>`, API aceitou `apt-77bacbaf35e5` após 3 retries de data). **Falha única na última barreira**: o modelo embrulhou o JSON canônico em cerca markdown ``` ```json…``` ``` apesar da instrução "Nao use \`\`\`json". `_parse_runner_output` chamou `json.loads(text)` direto e explodiu com `JSONDecodeError: Expecting value: line 1 column 1 (char 0)` → `E_AGENT_OUTPUT_INVALID` exit 3.
+
+Comportamento conhecido do Gemini 2.5 Pro sob reasoning: ignora consistentemente a instrução "sem cercas" em ~30% das respostas com schema estruturado. Camada B (parser tolerante) **tem** que incluir fence stripping — senão o E2E nunca passa com Pro. Camada C (validator-pass) vira rede de segurança real em vez de feature opcional.
+
+Novas tarefas desta fase de fechamento:
+
+- **Camada B reforçada**: `_strip_json_fence(raw)` aplicado antes de `json.loads`. Remove ``` ```json ```, ``` ``` ```, e espaços em volta. Implementado em função pura testável.
+- **Camada D — Prompt hardening** (antes fora de escopo, agora incluído a pedido do usuário):
+  - Schema da resposta ganha discriminador `status` (alinhado com Camada B).
+  - Regra explícita de data futura: `scheduled_for` >= `hoje + 48h`, com exemplo concreto.
+  - Regra de higiene da lista de exames: ignorar itens que começam com `<` (placeholders de PII) ou `[` (bullets).
+  - **CLI pré-filtra** a lista antes de montar o prompt: drop de `<PII>` placeholders + strip de prefixos `^\d+[.)\s]+` e `^[a-z][).\s]+` que o Tesseract deixa vazar.
+
+Tarefas afetadas em `tasks.md`: novas T080–T086 para Camada D. T053 (update do `spec.example.json`) absorve as mudanças de prompt. T050–T052 (Camada B) permanecem, mas T050 ganha `_strip_json_fence` como sub-tarefa obrigatória.
+
+---
+
 ## Problema
 
 No E2E real executado em 2026-04-20 (após concluir ADR-0009, com `gemini-2.5-flash-lite` em `.env`) o agente termina sem a saída canônica. O DEBUG log mostra três falhas compostas:

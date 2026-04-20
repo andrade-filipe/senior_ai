@@ -4,6 +4,8 @@ status: todo
 ---
 
 > **Nota 2026-04-20**: Camada A (T010–T012, T040 reinterpretado, T042) foi **partialmente superseded** por spec 0010 + ADR-0010. Ver `spec.md § Atualização 2026-04-20`. T013 e T041 permanecem `done`. Camadas B e C (T014–T029, T050–T063) permanecem ativas.
+>
+> **Nota 2026-04-21**: Camada D adicionada para fechar o spec (prompt hardening + CLI pre-filter + `_strip_json_fence`). Ver `spec.md § Atualização 2026-04-21`. Novas tarefas T080–T086. T050 ganha `_strip_json_fence` como sub-tarefa obrigatória.
 
 ## Setup
 
@@ -53,7 +55,7 @@ Cada teste **deve falhar** antes da implementação correspondente. `[DbC]` marc
 
 ### Camada B
 
-- [ ] T050 — substituir `_RunnerOutput` em `generated_agent/__main__.py` por `RunnerSuccess | RunnerError` com discriminador `status`; adicionar `ExamResolution`, `RunnerErrorDetail` (T014–T017)
+- [ ] T050 — substituir `_RunnerOutput` em `generated_agent/__main__.py` por `RunnerSuccess | RunnerError` com discriminador `status`; adicionar `ExamResolution`, `RunnerErrorDetail` (T014–T017). **Sub-tarefa obrigatória**: adicionar função pura `_strip_json_fence(raw: str) -> str` que remove ` ```json `/` ``` ` e espaços; aplicada **antes** de `json.loads` em `_parse_runner_output`.
 - [ ] T051 — atualizar `_parse_runner_output` para devolver `RunnerResult` e chamar `_exit_error(exit_code=4)` em branch `RunnerError` (T018, T019)
 - [ ] T052 — atualizar `main()` para bifurcar: `RunnerSuccess` → tabela ASCII (atual); `RunnerError` → já tratou em `_exit_error`
 - [ ] T053 — atualizar `docs/fixtures/spec.example.json` instruction: adicionar `"status":"success"` no schema canônico; adicionar envelope de erro canônico; regerar agent.py via `uv run python -m transpiler docs/fixtures/spec.example.json generated_agent`
@@ -66,7 +68,15 @@ Cada teste **deve falhar** antes da implementação correspondente. `[DbC]` marc
 - [ ] T062 — wirar `_parse_runner_output` para chamar validator no branch `pydantic.ValidationError` quando flag ligada (T028, T029)
 - [ ] T063 — propagar env vars em `docker-compose.yml` service `generated-agent`
 
-## Refactor (TDD REFACTOR)
+### Camada D — Prompt hardening + CLI pre-filter (2026-04-21)
+
+- [ ] T080 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_drops_pii_placeholders` — lista `["Hemograma", "<LOCATION>", "<PERSON>"]` passa pelo pre-filter e sai `["Hemograma"]`
+- [ ] T081 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_strips_numeric_bullets` — `["1. Hemograma", "2) Glicemia", "a) Colesterol"]` → `["Hemograma", "Glicemia", "Colesterol"]`
+- [ ] T082 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_preserves_clean_names` — entrada já limpa é retornada inalterada
+- [ ] T083 — implementar `_prefilter_exams(exams: list[str]) -> list[str]` em `generated_agent/preocr.py` aplicando: (i) drop de itens que casam `^<[A-Z_]+>$`; (ii) strip de prefixos `^\d+[.)\s]+` e `^[a-z][).\s]+`; (iii) strip de whitespace; (iv) drop de strings vazias pós-strip (T080–T082)
+- [ ] T084 — wirar `_prefilter_exams` em `_run_preocr` (ou em `main()` logo após `_run_preocr`) antes de `_build_preocr_prompt` (AC1 da 0010 continua valendo)
+- [ ] T085 — atualizar `docs/fixtures/spec.example.json` instruction (absorvido por T053): (i) schema `status: "success" | "error"` discriminado; (ii) regra explícita "scheduled_for DEVE ser >= hoje + 48 horas"; (iii) regra "ignore itens que começam com `<` ou `[` na lista de exames recebida"; (iv) anti-fence hardcore: `NUNCA envolva sua resposta em \`\`\`json ou \`\`\` nem em qualquer outro fence markdown. Responda com JSON puro começando em { e terminando em }.`
+- [ ] T086 — regerar `generated_agent/agent.py` + snapshots do transpiler após T085 (mesmo comando de T053/T054 — consolidar em um passo)
 
 - [ ] T070 — extrair `_extract_text_from_event` se `_parse_runner_output` e `_run_validator_pass` duplicarem lógica de varredura de `content.parts`
 - [ ] T071 — consolidar constantes `E_*` em `generated_agent/errors.py` (hoje espalhadas em `__main__.py`)
