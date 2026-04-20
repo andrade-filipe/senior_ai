@@ -24,8 +24,8 @@ Afeta: o **avaliador do desafio**, que provavelmente submeterá seu próprio PNG
 
 ## Critérios de aceitação
 
-- [AC1] Dado uma imagem registrada no dict `FIXTURES` (hash conhecido), quando `extract_exams_from_image(image_base64)` roda, então retorna exatamente a lista canônica do fixture (fast-path), sem invocar Tesseract, e emite log `ocr.fixture.hit{sha256_prefix, exam_count}`.
-- [AC2] Dado uma imagem **não registrada** mas legível (pedido médico com nomes de exame visíveis), quando a tool roda, então invoca `ocr.extract_exam_lines(image_bytes, lang=OCR_TESSERACT_LANG, timeout_s=OCR_TIMEOUT_SECONDS)`, retorna a lista de linhas filtradas, e emite log `ocr.tesseract.invoked{sha256_prefix, duration_ms, exam_count}`.
+- [AC1] Dado uma imagem registrada no dict `FIXTURES` (hash conhecido), quando `extract_exams_from_image(image_base64)` roda, então retorna exatamente a lista canônica do fixture (fast-path), sem invocar Tesseract, e emite log `ocr.lookup.hit` (campo `event`).
+- [AC2] Dado uma imagem **não registrada** mas legível (pedido médico com nomes de exame visíveis), quando a tool roda, então invoca `ocr.extract_exam_lines(image_bytes, lang=OCR_TESSERACT_LANG, timeout_s=OCR_TIMEOUT_SECONDS)`, retorna a lista de linhas filtradas, e emite dois logs: `ocr.tesseract.invoked{image_size, lang}` antes do parse e `ocr.tesseract.result{filtered_line_count, duration_ms, lang}` depois.
 - [AC3] Dado o resultado do OCR real, quando a tool devolve, então cada string passou por `security.pii_mask()` (ADR-0003 Layer 1), preservando o comportamento atual. Nenhum CPF/nome/contato cru aparece no retorno.
 - [AC4] Dado uma imagem ilegível (ruído, em branco, sem texto reconhecível), quando o Tesseract retorna zero linhas plausíveis após filtragem, então a tool retorna `[]` e o CLI aborta com envelope `E_OCR_UNKNOWN_IMAGE` (exit `4`). **Sem fallback silencioso**.
 - [AC5] Dado uma imagem > `OCR_IMAGE_MAX_BYTES` (5 MB decoded), quando a tool roda, então aborta antes de chamar Tesseract com `E_OCR_IMAGE_TOO_LARGE` (comportamento preservado).
@@ -71,7 +71,7 @@ CLI chama `session.call_tool("extract_exams_from_image", {"image_base64": b64})`
 - **Ameaça**: PII vaza via output do Tesseract (nome do paciente, CPF, etc.).
   **Mitigação**: `pii_mask` aplicado item-a-item antes do retorno (AC3). Idêntico ao caminho atual do fast-path.
 - **Ameaça**: log estruturado vaza PII bruta do texto OCR.
-  **Mitigação**: logs emitem apenas `sha256_prefix`, `duration_ms`, `exam_count`. **Nunca** o conteúdo textual.
+  **Mitigação**: logs emitem apenas `image_size`, `duration_ms`, `filtered_line_count`, `lang`. **Nunca** o conteúdo textual. (O `sha256` do payload é emitido em log separado `ocr.lookup.hash` pela spec 0009 T041, antes de qualquer chamada ao Tesseract.)
 - **Ameaça**: `tesseract-ocr-por` baixa modelo de fonte não confiável.
   **Mitigação**: instalado via `apt-get` padrão do Debian slim (repos oficiais); sem pip download arbitrário.
 

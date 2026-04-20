@@ -19,7 +19,6 @@ from __future__ import annotations
 import asyncio
 import io
 import re
-import time
 from typing import TypeAlias
 
 # pytesseract and Pillow are runtime deps installed in the Docker image.
@@ -43,6 +42,9 @@ _MAX_LINES: int = 64
 
 # Short uppercase medical acronyms (TSH, HDL, PSA, T3, T4, CPK...) are legit
 # exam names despite being under _MIN_LINE_LEN. Keep them via this exemption.
+# Note: this also lets through non-exam uppercase tokens like OBS, CEP, SUS —
+# those are absorbed downstream by RAG fuzzy matching (rapidfuzz threshold 80),
+# which returns zero matches and the agent drops them silently.
 _ACRONYM_RE = re.compile(r"^[A-Z][A-Z0-9]{1,3}(?:-\d+)?$")
 
 # Drop lines whose leading token is a known document header or field label,
@@ -88,8 +90,9 @@ def _filter_lines(raw_text: str) -> list[ExamLine]:
         raw_text is the string returned by pytesseract.image_to_string().
 
     Post:
-        Each item in the returned list satisfies:
-            _MIN_LINE_LEN (3) <= len(item) <= _MAX_LINE_LEN (120)
+        Each item in the returned list satisfies EITHER
+            _MIN_LINE_LEN (5) <= len(item) <= _MAX_LINE_LEN (120)
+        OR matches _ACRONYM_RE (uppercase medical acronym, 2-4 chars).
         No item matches _HEADER_RE (header prefix like "Paciente:").
         No item is composed entirely of digits/punctuation.
         len(result) <= _MAX_LINES (64).
@@ -155,13 +158,15 @@ async def extract_exam_lines(
 
     Post:
         Returns list[str] with at most 64 items.
-        Each item satisfies 3 <= len <= 120 chars.
+        Each item satisfies 5 <= len <= 120 chars, OR is a short uppercase
+        medical acronym matching _ACRONYM_RE (TSH, HDL, PSA, T3, CPK, ...).
         No item starts with a known header prefix (e.g. "Paciente:").
         Returns [] if zero lines pass the filter (blank/noise image).
         Does NOT apply pii_mask — that is the server layer's responsibility.
 
-    Invariant:
-        assert all(_MIN_LINE_LEN <= len(x) <= _MAX_LINE_LEN for x in result)
+    Invariant (tripwire via `assert`; stripped when Python runs with -O):
+        all(_ACRONYM_RE.match(x) or _MIN_LINE_LEN <= len(x) <= _MAX_LINE_LEN)
+        The Dockerfile CMD does not pass -O, so production keeps the check.
 
     Args:
         image_bytes: Raw PNG/JPEG bytes.
@@ -185,8 +190,6 @@ async def extract_exam_lines(
     finally:
         buf.close()
 
-    t0 = time.monotonic()
-
     def _run_tesseract() -> str:
         """Blocking call to pytesseract — runs in a thread pool worker."""
         try:
@@ -200,13 +203,7 @@ async def extract_exam_lines(
                 ) from exc
             raise
 
-    try:
-        raw_text: str = await asyncio.to_thread(_run_tesseract)
-    except OcrTimeoutError:
-        raise
-
-    duration_ms = (time.monotonic() - t0) * 1000
-    _ = duration_ms  # available to callers via logging in server layer
+    raw_text: str = await asyncio.to_thread(_run_tesseract)
 
     result = _filter_lines(raw_text)
 

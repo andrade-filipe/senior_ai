@@ -42,9 +42,11 @@ flowchart TB
 
 ### `ocr-mcp`
 - Tecnologia: FastMCP + SSE (`mcp.run(transport="sse", port=8001)`).
-- MVP: mock determinístico — dado um hash da imagem, retorna texto canned de um dicionário de fixtures.
-- **Camada PII aplicada aqui** antes de retornar (`security.pii_mask(text)`).
+- **OCR real via Tesseract** (spec 0011 / ADR-0011): `pytesseract.image_to_string(img, lang="por")` com binário `tesseract-ocr` + `tesseract-ocr-por` instalado no Dockerfile. Módulo `ocr_mcp/ocr.py` encapsula a chamada em `asyncio.to_thread` + filtro de ruído (header blacklist, min-len 5 com exemption para acrônimos médicos, cap 64 linhas).
+- **Fast-path de hash** (`ocr_mcp/fixtures.py`): preservado como cache zero-latência. `lookup(image_base64) -> list[str] | None` retorna lista canned para hashes conhecidos ou `None` (miss) → delega ao Tesseract. Contrato público da tool MCP inalterado (AC8).
+- **Camada PII aplicada aqui** antes de retornar (`security.pii_mask(text)`), tanto no fast-path quanto no caminho Tesseract.
 - Tools expostas: `extract_exams_from_image(image_base64: str) -> list[str]`.
+- Envs: `OCR_TESSERACT_LANG` (default `por`) controla o Tesseract; `OCR_DEFAULT_LANGUAGE` (default `pt`) controla o Presidio — separados em spec 0011.
 
 ### `rag-mcp`
 - Tecnologia: FastMCP + SSE em `:8002`.
@@ -448,7 +450,7 @@ Implicação operacional: só uma tool (`POST /appointments`) muda estado. Isso 
 A plataforma GenAI que Chip Huyen descreve (*AI Engineering*, cap. 10) tem seis camadas: Context, Guardrails, Router, Cache, Logic, Observability. Adotamos quatro; rejeitamos duas:
 
 - **Router / gateway de modelos** — não adotado. Temos **um** modelo (`gemini-2.5-flash`, ADR-0005). Router faz sentido quando roteia entre Gemini/OpenAI/Claude por custo ou especialidade; para este desafio seria complexidade sem retorno. Consequência: modelo fixado via `Literal` no schema; trocar exige ADR nova.
-- **Cache semântico** — não adotado. O RAG já é determinístico (catálogo estático + rapidfuzz) e o OCR é mock. Cache de chamadas LLM exigiria camada extra sem ganho mensurável no MVP; pode virar ADR nova se a avaliação exigir métrica de latência.
+- **Cache semântico** — não adotado. O RAG já é determinístico (catálogo estático + rapidfuzz) e o OCR usa Tesseract local (spec 0011), sem custo por chamada. Cache de chamadas LLM exigiria camada extra sem ganho mensurável no MVP; pode virar ADR nova se a avaliação exigir métrica de latência.
 
 As outras quatro camadas estão presentes: **Context** (MCP servers), **Guardrails** (PII dupla camada + validação Pydantic), **Logic** (LlmAgent único, ADR-0006), **Observability** (logs estruturados JSON com `correlation_id`).
 

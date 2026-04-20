@@ -45,7 +45,8 @@ cp .env.example .env
 |---|---|---|---|
 | `OCR_IMAGE_MAX_BYTES` | `5242880` (5 MB) | Tamanho máximo da imagem decodificada (base64 → bytes). Acima disso: `E_OCR_IMAGE_TOO_LARGE`. | `ocr_mcp/ocr_mcp/server.py` |
 | `OCR_TIMEOUT_SECONDS` | `5` | Timeout wall-clock para uma chamada do `extract_exams_from_image`. | `ocr_mcp/ocr_mcp/server.py` |
-| `OCR_DEFAULT_LANGUAGE` | `pt` | Idioma default passado ao Tesseract quando o chamador não especifica. | `ocr_mcp/ocr_mcp/server.py` |
+| `OCR_DEFAULT_LANGUAGE` | `pt` | Idioma passado para o `pii_mask` (Presidio) ao mascarar os resultados do OCR — **não** afeta o Tesseract (spec 0011 separou os dois). | `ocr_mcp/ocr_mcp/server.py` |
+| `OCR_TESSERACT_LANG` | `por` | Código de idioma passado para o `pytesseract.image_to_string`. Requer que o pacote `tesseract-ocr-<lang>` esteja instalado no Dockerfile (o padrão `por` já é embarcado). | `ocr_mcp/ocr_mcp/server.py` (spec 0011 / ADR-0011) |
 | `PII_*` (ver § 2.5) | — | Camada 1 do PII roda in-process dentro do `ocr-mcp`. | — |
 
 ### 2.3 `rag-mcp`

@@ -52,13 +52,24 @@ class TestOutputHasNoRawPii:
         mock_masked.masked_text = "Hemograma Completo"  # name has no PII, stays same
 
         with patch("ocr_mcp.fixtures.lookup", return_value=canned):
-            with patch("security.pii_mask", return_value=mock_masked):
+            with patch("security.pii_mask", return_value=mock_masked) as mock_pii:
                 from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
                 result = await extract_exams_from_image(fake_b64)
 
-        # pii_mask was called for each item (or not at all for empty list)
-        # The key invariant: all returned strings have gone through pii_mask
+        # The invariant: every exam string in output went through pii_mask.
+        # Strengthened after reviewer SMELL-4 (2026-04-20): weak
+        # isinstance-only assertion hid the case where pii_mask was never
+        # invoked.
         assert isinstance(result, list)
+        assert len(result) == len(canned)
+        assert mock_pii.call_count == len(canned), (
+            f"pii_mask must be called once per exam name; "
+            f"got {mock_pii.call_count} calls for {len(canned)} items"
+        )
+        for item in result:
+            # Each returned item is the mock's masked_text, proving it passed
+            # through the mask rather than bypassing it.
+            assert item == mock_masked.masked_text
 
     @pytest.mark.asyncio
     async def test_pii_mask_called_on_each_item(

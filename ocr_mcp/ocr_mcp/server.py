@@ -34,7 +34,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from ocr_mcp import fixtures, ocr
 from ocr_mcp.errors import OcrError
 from ocr_mcp.logging_ import get_logger
-from ocr_mcp.ocr import OcrTimeoutError as _OcrTimeoutError
+from ocr_mcp.ocr import OcrTimeoutError
 
 # Guardrail caps (ADR-0008 § Guardrails de tamanho)
 _IMAGE_MAX_BYTES = int(os.environ.get("OCR_IMAGE_MAX_BYTES", str(5 * 1024 * 1024)))  # 5 MB decoded
@@ -119,7 +119,7 @@ async def _do_ocr(image_base64: str) -> list[str]:
                 lang=_TESSERACT_LANG,
                 timeout_s=_OCR_TIMEOUT_S,
             )
-        except _OcrTimeoutError:
+        except OcrTimeoutError:
             logger.error(
                 "ocr.tesseract.timeout",
                 extra={"event": "ocr.tesseract.timeout", "lang": _TESSERACT_LANG},

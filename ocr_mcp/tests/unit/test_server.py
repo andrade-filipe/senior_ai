@@ -246,3 +246,49 @@ class TestExtractToolTimeoutWhenRealOcrHangs:
         assert "E_OCR_TIMEOUT" in str(exc_info.value), (
             f"Expected E_OCR_TIMEOUT in ToolError message, got: {exc_info.value}"
         )
+
+
+# ---------------------------------------------------------------------------
+# T018: E_OCR_TIMEOUT when Tesseract's internal timeout fires (pytesseract path)
+# ---------------------------------------------------------------------------
+
+
+class TestExtractToolTimeoutFromTesseractSubprocess:
+    """T018 [DbC] [AC6]: server must convert OcrTimeoutError to E_OCR_TIMEOUT.
+
+    Complements T017: T017 exercises the outer asyncio.wait_for preempting a
+    stuck coroutine; T018 exercises the inner path where pytesseract itself
+    times out via its subprocess timeout kwarg, raising OcrTimeoutError. That
+    path is translated to asyncio.TimeoutError by server._do_ocr, which the
+    outer wait_for/except converts to ToolError[E_OCR_TIMEOUT].
+
+    Without this test, the `except OcrTimeoutError` branch at server._do_ocr
+    has zero coverage (reviewer BLOCKER-2, 2026-04-20).
+    """
+
+    @pytest.mark.asyncio
+    async def test_server_converts_ocr_timeout_error_to_e_ocr_timeout(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """T018: ocr.extract_exam_lines raises OcrTimeoutError → ToolError[E_OCR_TIMEOUT]."""
+        from ocr_mcp.ocr import OcrTimeoutError
+
+        monkeypatch.setattr(fixtures, "lookup", lambda b64: None)
+
+        async def tesseract_timeout(*args: object, **kwargs: object) -> list[str]:
+            raise OcrTimeoutError("Tesseract exceeded 5s (lang=por)")
+
+        b64_input = _make_b64(b"\x89PNG\r\n\x1a\n" + b"\x00" * 50)
+
+        with patch("ocr_mcp.server.ocr") as mock_ocr_module:
+            mock_ocr_module.extract_exam_lines = tesseract_timeout
+            # Keep OcrTimeoutError reachable through the patched module too,
+            # but server.py imports it directly at module top so the real
+            # class is used in the except clause — no patch needed there.
+            with pytest.raises(ToolError) as exc_info:
+                await extract_exams_from_image(b64_input)
+
+        assert "E_OCR_TIMEOUT" in str(exc_info.value), (
+            f"Expected E_OCR_TIMEOUT envelope when Tesseract subprocess "
+            f"timeouts; got: {exc_info.value}"
+        )
