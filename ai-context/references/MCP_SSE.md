@@ -58,25 +58,25 @@ if __name__ == "__main__":
 ## 4. Cliente — integração com Google ADK
 ```python
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 SSE_HEADERS = {"Accept": "application/json, text/event-stream"}
 
 ocr_tools = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(
+    connection_params=SseConnectionParams(
         url="http://ocr-mcp:8001/sse",
         headers=SSE_HEADERS,
     ),
 )
 rag_tools = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(
+    connection_params=SseConnectionParams(
         url="http://rag-mcp:8002/sse",
         headers=SSE_HEADERS,
     ),
 )
 ```
 
-Atualizado em 2026-04-18: `StreamableHTTPConnectionParams` substitui `SseConnectionParams` (que não existe mais no ADK atual). O servidor permanece 100% SSE — só a classe de consumo no cliente mudou.
+Atualizado em 2026-04-19: `SseConnectionParams` é a classe correta para FastMCP com `transport="sse"` (protocolo SSE legado — `GET /sse` + `POST /messages`). A classe `StreamableHTTPConnectionParams` existe no ADK 1.31.0 mas fala outro protocolo (POST único em `/sse`) — usá-la contra nossos servidores causa `HTTP 405 Method Not Allowed`. Fonte primária: `google/adk/tools/mcp_tool/mcp_session_manager.py:89,120,400,408`. Corrige afirmação do 2026-04-18 (ver `DESIGN_AUDIT.md § C2 nota de correção 2026-04-19` e `ADR-0001 § Correção da correção (2026-04-19)`).
 Use `tool_filter=[...]` para expor apenas tools específicas. Sempre chame `await toolset.close()` em scripts assíncronos.
 
 ## 5. Ciclo de vida e containers

@@ -20,7 +20,8 @@ Se usamos uma URL, um paper, um artigo ou um vídeo para decidir algo ou produzi
 
 - [oficial] https://adk.dev/ — documentação oficial (domínio migrou de `google.github.io/adk-docs/` para `adk.dev/` — confirmado em 2026-04-18).
 - [oficial] https://adk.dev/agents/llm-agents/ — referência para `LlmAgent` usado em ADR-0006 (parâmetro é `instruction` singular).
-- [oficial] https://adk.dev/tools-custom/mcp-tools/ — classe `McpToolset` + `StreamableHTTPConnectionParams` (ADR-0001, ADR-0006).
+- [oficial] https://adk.dev/tools-custom/mcp-tools/ — classe `McpToolset` + `SseConnectionParams` (ADR-0001 § Correção da correção 2026-04-19; `StreamableHTTPConnectionParams` fala outro protocolo).
+- [source-of-truth] `google/adk/tools/mcp_tool/mcp_session_manager.py:89,120,400,408` (google-adk==1.31.0) — confirma `SseConnectionParams` pública e dispatch para `sse_client()` legado; é a única classe compatível com FastMCP `transport="sse"` no nosso stack.
 - [oficial] https://adk.dev/callbacks/ — `before_model_callback(callback_context, llm_request)` (ADR-0003).
 - [oficial] https://github.com/google/adk-python — repositório oficial, fonte canônica para imports.
 - [codelab] https://codelabs.developers.google.com/your-first-agent-with-adk?hl=pt-br#0 — primeiro agente ADK.

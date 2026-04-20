@@ -94,13 +94,13 @@ transpiler/
 ```jinja
 from google.adk.agents.llm_agent import Agent
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 _SSE_HEADERS = {"Accept": "application/json, text/event-stream"}
 
 {% for tool in tools_mcp %}
 {{ tool.name }} = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(url="{{ tool.url }}", headers=_SSE_HEADERS),
+    connection_params=SseConnectionParams(url="{{ tool.url }}", headers=_SSE_HEADERS),
     {% if tool.tool_filter %}tool_filter={{ tool.tool_filter|tojson }},{% endif %}
 )
 {% endfor %}

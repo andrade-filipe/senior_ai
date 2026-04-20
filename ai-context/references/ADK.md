@@ -79,10 +79,10 @@ def get_weather(city: str) -> dict:
 
 ```python
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 ocr_toolset = McpToolset(
-    connection_params=StreamableHTTPConnectionParams(
+    connection_params=SseConnectionParams(
         url="http://ocr-mcp:8001/sse",
         headers={
             "Accept": "application/json, text/event-stream",
@@ -92,7 +92,7 @@ ocr_toolset = McpToolset(
 )
 ```
 
-Atualizado em 2026-04-18 após auditoria: o ADK atual expõe apenas `StreamableHTTPConnectionParams` como classe de conexão MCP remota. A classe `SseConnectionParams` (/`SseServerParams`) citada anteriormente não existe mais na versão corrente; o servidor continua 100% SSE (ADR-0001) e o cliente consome via `StreamableHTTPConnectionParams` com o header `Accept` apropriado.
+Atualizado em 2026-04-19 após inspeção do pacote `google-adk==1.31.0` instalado: `SseConnectionParams` existe e é pública em `mcp_session_manager.py:89`; ela despacha para `sse_client()` (protocolo SSE legado — `GET /sse` + `POST /messages`), que é exatamente o que FastMCP serve com `mcp.run(transport="sse")`. `StreamableHTTPConnectionParams` (também presente) despacha para `streamablehttp_client()` — protocolo distinto (POST único) e **incompatível** com nosso servidor; usar essa classe causa `HTTP 405 Method Not Allowed`. A auditoria de 2026-04-18 (em `DESIGN_AUDIT.md § C2`) concluiu erroneamente que `SseConnectionParams` não existia no ADK atual; essa conclusão foi corrigida no § C2 nota de correção 2026-04-19 e em `ADR-0001 § Correção da correção (2026-04-19)`.
 
 ### 4.3 Uso síncrono vs assíncrono
 - Em scripts CLI isolados, o padrão async com `exit_stack` / `await toolset.close()` é necessário.

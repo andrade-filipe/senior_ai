@@ -486,6 +486,80 @@ o container encerra sozinho com exit code diferente de 0.
 
 ---
 
+### Cenario 13 — `HTTP/1.1 405 Method Not Allowed` no handshake MCP
+
+**Sintoma:** Logs do agente mostram `POST http://ocr-mcp:8001/sse "HTTP/1.1 405 Method
+Not Allowed"` (ou a variante `rag-mcp:8002/sse`) durante a inicializacao do `McpToolset`.
+O agente aborta antes de chamar qualquer tool.
+
+**Causa:** Transporte MCP cliente-servidor desalinhado. Nossos servidores FastMCP rodam
+com `mcp.run(transport="sse")` — protocolo SSE legado (`GET /sse` + `POST /messages`).
+A unica classe cliente do ADK compativel e `SseConnectionParams`. Se algum arquivo
+estiver usando `StreamableHTTPConnectionParams`, o cliente faz `POST /sse` (protocolo
+Streamable-HTTP, endpoint unico) e o servidor responde 405. Ver
+[ADR-0001 § Correção da correção 2026-04-19](../adr/0001-mcp-transport-sse.md).
+
+**Correcao:**
+```bash
+# Deve retornar zero ocorrencias fora da nota de correção historica:
+grep -rn "StreamableHTTPConnectionParams" generated_agent/ transpiler/ tests/ \
+  | grep -v "test_mcp_transport_match.py"
+```
+Se aparecer uso real, trocar por `SseConnectionParams` no mesmo modulo
+(`mcp_session_manager` continua sendo o submodulo de import). O guard de regressao
+`tests/infra/test_mcp_transport_match.py` deve falhar antes de qualquer merge.
+
+---
+
+### Cenario 14 — `Model pt_core_news_lg is not installed. Downloading...`
+
+**Sintoma:** Logs do `ocr-mcp` (ou `generated-agent`) mostram
+`Model 'pt_core_news_lg' is not installed. Downloading...` na primeira chamada e o
+download fica tentando baixar ~568 MB. Em paralelo, o callback PII estoura
+`E_PII_TIMEOUT` (5 s) e o prompt do LLM vira `<REDACTED - PII guard error>`, o que
+depois cascateia em `E_AGENT_OUTPUT_INVALID` (LLM responde em texto, parser Pydantic
+falha).
+
+**Causa:** Modelo spaCy do Presidio nao foi bakeado na imagem. Em `docker build`, o
+`uv pip install --system .` instala Presidio mas nao baixa o modelo; o primeiro uso
+dispara o download em runtime — que nao cabe no hard-timeout de 5 s do PII guard
+(ADR-0003 + ADR-0008).
+
+**Correcao:**
+```bash
+# Ambos os Dockerfiles devem conter a linha de bake:
+grep -n "spacy download pt_core_news_lg" ocr_mcp/Dockerfile generated_agent/Dockerfile
+# Esperado: uma ocorrencia em cada.
+```
+Se faltar, adicionar apos o `uv pip install`:
+```dockerfile
+RUN python -m spacy download pt_core_news_lg
+```
+E rebuildar as imagens (`docker compose build ocr-mcp generated-agent`). O guard
+`tests/infra/test_dockerfiles.py::TestSpacyModelBakedForPii` deve falhar antes do
+merge.
+
+---
+
+### Cenario 15 — `E_PII_TIMEOUT` em cascata com `E_AGENT_OUTPUT_INVALID`
+
+**Sintoma:** Run termina com `E_AGENT_OUTPUT_INVALID ... Expecting value: line 1
+column 1 (char 0)`; logs anteriores mostram `pii.callback.error` com
+`error=E_PII_TIMEOUT`.
+
+**Causa:** Consequencia direta do Cenario 14 (modelo spaCy baixando em runtime) ou
+de qualquer bloqueio de I/O dentro do `before_model_callback`. O callback estoura 5 s,
+marca o texto como `<REDACTED - PII guard error>`, o LLM recebe prompt corrompido
+e responde conversa em texto livre — o parser JSON do `_run_agent` falha.
+
+**Correcao:** tratar a causa-raiz, nao o sintoma. Checar o Cenario 14 primeiro
+(`spacy download` bakeado). **Nao** aumentar o timeout do PII guard (5 s e contrato
+fixado em ADR-0008). Se o Cenario 14 estiver ok, inspecionar
+`docker compose logs generated-agent` em volta do primeiro `pii.callback.run` para
+achar o bloqueio real.
+
+---
+
 ## 6. Registro da sua execucao
 
 Copie o bloco abaixo, preencha cada campo e cole nas secoes de evidencia indicadas na

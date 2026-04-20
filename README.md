@@ -182,7 +182,7 @@ Paralelo a `docs/` (entrega humana), existe `ai-context/` como memória operacio
 - [`ai-context/WORKFLOW.md`](ai-context/WORKFLOW.md) — ciclo SDD + TDD de 9 passos com donos por etapa.
 - [`ai-context/STATUS.md`](ai-context/STATUS.md) — quadro vivo de progresso por bloco; atualizado a cada checkpoint.
 - [`ai-context/LINKS.md`](ai-context/LINKS.md) — log auditável de **toda fonte externa** consultada (ADK, MCP, Presidio, rapidfuzz, papers agentic). Cada decisão técnica tem a fonte primária rastreável.
-- [`ai-context/references/DESIGN_AUDIT.md`](ai-context/references/DESIGN_AUDIT.md) — auditoria crítica do design pré-implementação. Capturou e corrigiu: Gemini `2.0-flash` deprecated → `2.5-flash`; `SseConnectionParams` renomeado no ADK → `StreamableHTTPConnectionParams`; Presidio BR recognizers documentados como custom.
+- [`ai-context/references/DESIGN_AUDIT.md`](ai-context/references/DESIGN_AUDIT.md) — auditoria crítica do design pré-implementação. Capturou e corrigiu: Gemini `2.0-flash` deprecated → `2.5-flash`; Presidio BR recognizers documentados como custom. Uma afirmação da auditoria sobre `SseConnectionParams` foi corrigida em 2026-04-19 após inspeção do pacote ADK 1.31.0 instalado — a classe existe e é a única compatível com FastMCP `transport="sse"` (ver nota de correção no § C2).
 - [`ai-context/references/AGENTIC_PATTERNS.md`](ai-context/references/AGENTIC_PATTERNS.md) — racional técnico dos padrões agentic adotados (Tool Use, Guardrails, Basic RAG, Plan-then-Execute, Human-in-the-Loop).
 
 ### Estratégia de orquestração do agente (runtime)
@@ -214,7 +214,7 @@ Um único agente, três tools (`extract_exams_from_image`, `search_exam_code`, `
 
 As decisões arquiteturais deste projeto se ancoram em documentação oficial e literatura técnica rastreável. As fontes mais load-bearing:
 
-- [Google ADK documentation](https://google.github.io/adk-docs/) — `LlmAgent`, `McpToolset`, `StreamableHTTPConnectionParams`, `before_model_callback` (ADR-0006).
+- [Google ADK documentation](https://google.github.io/adk-docs/) — `LlmAgent`, `McpToolset`, `SseConnectionParams`, `before_model_callback` (ADR-0006; ver ADR-0001 § Correção da correção 2026-04-19).
 - [Model Context Protocol specification](https://modelcontextprotocol.io/) e [Python SDK (FastMCP)](https://github.com/modelcontextprotocol/python-sdk) — transporte SSE e shape das tools (ADR-0001).
 - [Microsoft Presidio](https://microsoft.github.io/presidio/) + documentação de custom recognizers — base da camada PII e dos 4 recognizers BR (ADR-0003).
 - [GitHub `spec-kit`](https://github.com/github/spec-kit) — metodologia SDD adaptada para este projeto (ADR-0004).

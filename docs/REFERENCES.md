@@ -8,11 +8,11 @@ O log operacional completo (incluindo notas internas de pesquisa e utilitários 
 
 ## 1. Google ADK (Agent Development Kit)
 
-O ADK é o framework de agentes imposto pelo desafio. Todas as decisões sobre topologia do agente ([ADR-0006](adr/0006-spec-schema-and-agent-topology.md)), integração com MCP ([ADR-0001](adr/0001-mcp-transport-sse.md)) e a dupla camada de PII via `before_model_callback` ([ADR-0003](adr/0003-pii-double-layer.md)) foram ancoradas na documentação oficial. A auditoria pré-implementação de 2026-04-18 identificou dois ajustes factuais a partir dessas fontes: o domínio oficial migrou de `google.github.io/adk-docs/` para `adk.dev/`, e o nome correto da classe cliente passou a ser `McpToolset` (com `StreamableHTTPConnectionParams` em vez do extinto `SseConnectionParams`).
+O ADK é o framework de agentes imposto pelo desafio. Todas as decisões sobre topologia do agente ([ADR-0006](adr/0006-spec-schema-and-agent-topology.md)), integração com MCP ([ADR-0001](adr/0001-mcp-transport-sse.md)) e a dupla camada de PII via `before_model_callback` ([ADR-0003](adr/0003-pii-double-layer.md)) foram ancoradas na documentação oficial. A auditoria pré-implementação de 2026-04-18 identificou dois ajustes factuais: o domínio oficial migrou de `google.github.io/adk-docs/` para `adk.dev/`, e o construtor do cliente MCP é `McpToolset`. Uma segunda rodada de verificação em 2026-04-19 (baseada no código-fonte do pacote instalado, não só na doc online) confirmou que **`SseConnectionParams` existe e é a classe certa** para nossos servidores `transport="sse"` — o uso prévio de `StreamableHTTPConnectionParams` resultava em `HTTP 405` e foi corrigido. Detalhes em `ai-context/references/DESIGN_AUDIT.md § C2`.
 
 - https://adk.dev/ — documentação oficial.
 - https://adk.dev/agents/llm-agents/ — referência de `LlmAgent` (parâmetro `instruction` singular, usado no template Jinja2 do transpilador).
-- https://adk.dev/tools-custom/mcp-tools/ — `McpToolset` e `StreamableHTTPConnectionParams`.
+- https://adk.dev/tools-custom/mcp-tools/ — `McpToolset`, `SseConnectionParams` e `StreamableHTTPConnectionParams` (usamos a primeira — ver ADR-0001).
 - https://adk.dev/callbacks/ — assinatura `before_model_callback(callback_context, llm_request)`, base da PII Layer 2.
 - https://adk.dev/get-started/quickstart/#gemini---google-ai-studio — integração com Gemini via API key (`GOOGLE_GENAI_USE_VERTEXAI=FALSE`).
 - https://github.com/google/adk-python — repositório oficial.

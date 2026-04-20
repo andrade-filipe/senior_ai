@@ -51,7 +51,7 @@ Saída esperada: `200` (conexão SSE estabelecida).
 
 ### 3.3 Chamar a tool via script Python dentro da rede
 
-O agente usa `McpToolset` + `StreamableHTTPConnectionParams` (ADR-0001). Para testes manuais dentro da rede, crie um script e execute-o em um container com acesso à rede Compose:
+O agente usa `McpToolset` + `SseConnectionParams` (ADR-0001 § Correção da correção 2026-04-19). Para testes manuais dentro da rede, crie um script e execute-o em um container com acesso à rede Compose:
 
 ```python
 # test_ocr_tool.py — rodar via:
@@ -61,7 +61,7 @@ import base64
 import pathlib
 
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 
 
 async def main() -> None:
@@ -69,7 +69,7 @@ async def main() -> None:
     image_b64 = base64.b64encode(image_bytes).decode()
 
     toolset = McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
+        connection_params=SseConnectionParams(
             url="http://ocr-mcp:8001/sse",
             headers={"Accept": "application/json, text/event-stream"},
         ),
@@ -96,7 +96,7 @@ Os contratos públicos desta tool estão definidos em:
 
 - [`docs/ARCHITECTURE.md` § "Assinaturas exatas das tools MCP"](../ARCHITECTURE.md#assinaturas-exatas-das-tools-mcp) — assinatura congelada.
 - [`docs/ARCHITECTURE.md` § "Contratos entre subsistemas"](../ARCHITECTURE.md#contratos-entre-subsistemas) — formato de entrada e saída.
-- [ADR-0001](../adr/0001-mcp-transport-sse.md) — justificativa do transporte SSE; classe `StreamableHTTPConnectionParams` no cliente.
+- [ADR-0001](../adr/0001-mcp-transport-sse.md) — justificativa do transporte SSE; classe `SseConnectionParams` no cliente (única compatível com FastMCP `transport="sse"`; ver § Correção da correção 2026-04-19).
 - [ADR-0003](../adr/0003-pii-double-layer.md) — onde e como `pii_mask` é aplicado (camada 1 dentro do OCR MCP).
 - [`docs/specs/0003-mcp-ocr-rag/`](../specs/0003-mcp-ocr-rag/) — spec, plan e tasks do bloco.
 

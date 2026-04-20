@@ -92,7 +92,7 @@ As variáveis `OCR_MCP_URL`, `RAG_MCP_URL` e `SCHEDULING_OPENAPI_URL` devem apon
 
 - [`docs/ARCHITECTURE.md` § "generated_agent"](../ARCHITECTURE.md) — topologia `LlmAgent` único, tools, `before_model_callback`.
 - [`docs/ARCHITECTURE.md` § "Diagrama de fluxo (pedido médico)"](../ARCHITECTURE.md#diagrama-de-fluxo-pedido-medico) — sequência OCR → RAG → API.
-- [ADR-0001](../adr/0001-mcp-transport-sse.md) — transporte SSE; `StreamableHTTPConnectionParams`.
+- [ADR-0001](../adr/0001-mcp-transport-sse.md) — transporte SSE; `SseConnectionParams` (ver § Correção da correção 2026-04-19).
 - [ADR-0003](../adr/0003-pii-double-layer.md) — `before_model_callback` como camada 2 de PII.
 - [ADR-0006](../adr/0006-spec-schema-and-agent-topology.md) — `LlmAgent` único; `model: gemini-2.5-flash`.
 - [`docs/specs/0006-generated-agent/`](../specs/0006-generated-agent/) — spec, plan e tasks do bloco.

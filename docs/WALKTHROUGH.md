@@ -51,7 +51,7 @@ A partir daqui, tudo acontece dentro de `asyncio.wait_for(_run_agent(...), timeo
 
 ## 3. Passo 2 — OCR via MCP (SSE) + PII Layer 1
 
-`_run_agent()` constrói o `LlmAgent` chamando `agent._build_agent(correlation_id)`. Nessa função, o `McpToolset` do ADK é instanciado com `StreamableHTTPConnectionParams(url=OCR_MCP_URL, headers={"Accept": "application/json, text/event-stream", "X-Correlation-ID": correlation_id})`. Conforme a nota da [ADR-0001](adr/0001-mcp-transport-sse.md), o servidor é 100 % SSE; a classe `StreamableHTTPConnectionParams` é apenas o nome atual da classe cliente no ADK e consome endpoints SSE via compat.
+`_run_agent()` constrói o `LlmAgent` chamando `agent._build_agent(correlation_id)`. Nessa função, o `McpToolset` do ADK é instanciado com `SseConnectionParams(url=OCR_MCP_URL, headers={"Accept": "application/json, text/event-stream", "X-Correlation-ID": correlation_id})`. O servidor FastMCP roda `mcp.run(transport="sse")` (protocolo SSE legado com dois endpoints: `GET /sse` + `POST /messages`); `SseConnectionParams` é a classe cliente do ADK que despacha para `sse_client()` e fala exatamente esse protocolo. Ver [ADR-0001 § Correção da correção (2026-04-19)](adr/0001-mcp-transport-sse.md).
 
 Quando o modelo decide invocar `extract_exams_from_image(image_base64)`, o ADK abre a conexão SSE contra `http://ocr-mcp:8001/sse`. O servidor (`ocr_mcp/server.py`):
 
@@ -200,7 +200,7 @@ Para cada linha acima há ao menos um teste correspondente — ver rastreabilida
 
 ## 11. Links para aprofundamento
 
-- [ADR-0001 — Transporte MCP via SSE](adr/0001-mcp-transport-sse.md) — justifica `StreamableHTTPConnectionParams` consumindo endpoints `/sse`.
+- [ADR-0001 — Transporte MCP via SSE](adr/0001-mcp-transport-sse.md) — justifica `SseConnectionParams` consumindo endpoints `/sse` (nota de correção 2026-04-19 corrige o uso anterior de `StreamableHTTPConnectionParams`).
 - [ADR-0003 — PII em dupla camada](adr/0003-pii-double-layer.md) — contrato das duas camadas e lista fechada de entidades.
 - [ADR-0006 — Schema do spec e topologia LlmAgent único](adr/0006-spec-schema-and-agent-topology.md) — por que um único agente orquestra tudo.
 - [ADR-0007 — RAG fuzzy e catálogo CSV](adr/0007-rag-fuzzy-and-catalog.md) — `rapidfuzz.WRatio`, threshold 80, fonte SIGTAP.

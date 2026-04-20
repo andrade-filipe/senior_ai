@@ -72,7 +72,7 @@ flowchart TB
   ├── Dockerfile
   └── .env.example
   ```
-- `root_agent = LlmAgent(...)` com `McpToolset(connection_params=StreamableHTTPConnectionParams(url=...))` para OCR e RAG (o ADK atual consome endpoints SSE via essa classe — ver ADR-0001 nota de correção), e OpenAPI toolset (ou HTTP client simples) para a API de agendamento.
+- `root_agent = LlmAgent(...)` com `McpToolset(connection_params=SseConnectionParams(url=...))` para OCR e RAG (servidores FastMCP rodam `transport="sse"`; `SseConnectionParams` é a classe cliente correta no ADK — ver ADR-0001 § Correção da correção 2026-04-19), e OpenAPI toolset (ou HTTP client simples) para a API de agendamento.
 - `before_model_callback` aplica PII guard como segunda linha de defesa.
 
 ## Contratos entre subsistemas

@@ -56,7 +56,7 @@ Saída esperada: `200`.
 
 ### 3.3 Chamar as tools via script Python dentro da rede
 
-O padrão é o mesmo do `ocr-mcp` (Tutorial 02): `McpToolset` + `StreamableHTTPConnectionParams` (ADR-0001), apontando para `http://rag-mcp:8002/sse`. Substitua `tool_filter` por `["search_exam_code", "list_exams"]` e adapte os `args` conforme a seção 5.
+O padrão é o mesmo do `ocr-mcp` (Tutorial 02): `McpToolset` + `SseConnectionParams` (ADR-0001 § Correção da correção 2026-04-19), apontando para `http://rag-mcp:8002/sse`. Substitua `tool_filter` por `["search_exam_code", "list_exams"]` e adapte os `args` conforme a seção 5.
 
 ---
 

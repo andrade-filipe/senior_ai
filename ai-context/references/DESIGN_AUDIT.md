@@ -69,6 +69,42 @@
 - `ai-context/references/TRANSPILER.md` seção 7: template Jinja `agent.py.j2`.
 - `.claude/agents/adk-mcp-engineer.md`: bullets de regras técnicas + decisões ativas.
 
+#### Nota de correção (2026-04-19)
+
+A conclusão acima — "`SseConnectionParams` **não existe** no ADK atual" — está
+**factualmente errada**. Inspeção direta do pacote `google-adk==1.31.0` instalado
+no `.venv/` (fonte primária: código, não documentação) confirma:
+
+- `google/adk/tools/mcp_tool/mcp_session_manager.py:89` define
+  `class SseConnectionParams(BaseModel)` — pública, sem deprecation notice.
+- `mcp_session_manager.py:400` despacha `SseConnectionParams → sse_client()`
+  (protocolo SSE legado: dois endpoints `GET /sse` + `POST /messages`).
+- `mcp_session_manager.py:120` define `StreamableHTTPConnectionParams`.
+- `mcp_session_manager.py:408` despacha `StreamableHTTPConnectionParams →
+  streamablehttp_client()` (protocolo Streamable-HTTP: um endpoint POST único).
+
+**Ambas as classes coexistem e selecionam protocolos diferentes por `isinstance`.**
+Para o nosso stack — servidores FastMCP com `mcp.run(transport="sse")` (ver
+`ocr_mcp/ocr_mcp/__main__.py` e `rag_mcp/rag_mcp/__main__.py`) — a única classe
+cliente compatível é `SseConnectionParams`. `StreamableHTTPConnectionParams`
+causa `HTTP 405 Method Not Allowed` porque o servidor SSE só aceita `GET/HEAD`
+em `/sse`; o cliente Streamable-HTTP faz POST, que o servidor rejeita.
+
+**Impacto real observado:** no run E2E de 2026-04-19 o agente gerado caía com
+`POST http://ocr-mcp:8001/sse → HTTP/1.1 405 Method Not Allowed` exatamente por
+esse motivo. O fix trocou `StreamableHTTPConnectionParams` por
+`SseConnectionParams` em `generated_agent/agent.py`, no template
+`transpiler/transpiler/templates/agent.py.j2`, nas fakes de teste
+`tests/generated_agent/test_pii_callback.py` e nos snapshots do transpilador.
+
+Adicionado guard de regressão em `tests/infra/test_mcp_transport_match.py` que
+falha se servidor e cliente divergirem.
+
+**Sem reabertura de ADR** — a decisão-core de ADR-0001 ("transporte = SSE")
+continua válida; apenas a classe cliente foi corrigida. A documentação externa
+consultada pela auditoria original (snapshot parcial de `adk.dev/tools-custom`)
+estava incompleta; a fonte-de-verdade agora é o código instalado.
+
 ---
 
 ### [CRITICAL] C1 — MCP SSE é oficialmente deprecated no MCP spec
