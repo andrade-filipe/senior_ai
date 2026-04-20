@@ -70,28 +70,32 @@ class TestDockerfileAC2UvInstall:
 
 
 class TestDockerfileAC3CmdExecForm:
-    """[AC3] CMD uses exec/list form — never shell form string.
+    """[AC3] CMD/ENTRYPOINT uses exec/list form — never shell form string.
 
-    Only the standalone CMD Dockerfile instruction is checked.
+    Either a standalone CMD or a standalone ENTRYPOINT satisfies the rule; the
+    generated-agent image uses ENTRYPOINT so runtime args like `--image <path>`
+    append to the module invocation instead of replacing it.
     The HEALTHCHECK CMD argument is a separate concern (AC15).
     """
 
     @pytest.mark.parametrize("service,path", list(DOCKERFILES.items()))
     def test_cmd_exec_form(self, service: str, path: pathlib.Path) -> None:
         content = _read(path)
-        # A standalone CMD instruction starts at column 0 (no indent) and is
-        # NOT a continuation of a HEALTHCHECK line (HEALTHCHECK lines use
-        # backslash-continuation, so the CMD token is indented).
-        cmd_lines = [
+        # Standalone CMD/ENTRYPOINT instructions start at column 0 (no indent)
+        # and are NOT continuations of a HEALTHCHECK line (HEALTHCHECK lines use
+        # backslash-continuation, so the inner CMD token is indented).
+        exec_lines = [
             line.strip()
             for line in content.splitlines()
-            if re.match(r"^CMD\b", line)  # must start at column 0 (no indent)
+            if re.match(r"^(CMD|ENTRYPOINT)\b", line)
         ]
-        assert cmd_lines, f"[AC3] {service}/Dockerfile has no CMD instruction."
-        for cmd_line in cmd_lines:
-            assert cmd_line.startswith("CMD ["), (
-                f"[AC3] {service}/Dockerfile CMD must use exec (list) form: CMD [\"...\", ...]; "
-                f"found: {cmd_line!r}"
+        assert exec_lines, (
+            f"[AC3] {service}/Dockerfile has no CMD or ENTRYPOINT instruction."
+        )
+        for exec_line in exec_lines:
+            assert exec_line.startswith(("CMD [", "ENTRYPOINT [")), (
+                f"[AC3] {service}/Dockerfile must use exec (list) form "
+                f"(CMD [...] or ENTRYPOINT [...]); found: {exec_line!r}"
             )
 
 
@@ -120,6 +124,40 @@ class TestDockerfileAC15HealthcheckExplicit:
                 f"[AC15] {service}/Dockerfile HEALTHCHECK missing {flag!r}. "
                 "All four fields must be explicit (ADR-0008 § Timeouts)."
             )
+
+
+class TestSpacyModelBakedForPii:
+    """[ADR-0003 addendum, 2026-04-19] Dockerfiles that run Presidio must bake
+    the pt_core_news_lg spaCy model at build time.
+
+    Context: runtime first-call download (~568 MB) trips the 5 s PII guard
+    timeout → E_PII_TIMEOUT → pii.callback.error → prompt corrupted → agent
+    output invalid. Observed in the 2026-04-19 E2E run.
+
+    Services that need the bake:
+      - ocr_mcp       — applies PII Layer 1 mask in the SSE tool response
+      - generated_agent — applies PII Layer 2 via before_model_callback
+    rag_mcp does NOT run Presidio and therefore does not need the model.
+    """
+
+    SPACY_REQUIRED = {"ocr_mcp", "generated_agent"}
+
+    @pytest.mark.parametrize("service", sorted(SPACY_REQUIRED))
+    def test_spacy_model_baked(self, service: str) -> None:
+        content = _read(DOCKERFILES[service])
+        assert "python -m spacy download pt_core_news_lg" in content, (
+            f"[ADR-0003] {service}/Dockerfile must run "
+            "`python -m spacy download pt_core_news_lg` at build time; "
+            "runtime download would trip the 5 s PII guard timeout."
+        )
+
+    def test_rag_mcp_does_not_need_spacy(self) -> None:
+        """rag_mcp does not run Presidio — guard against unnecessary image bloat."""
+        content = _read(DOCKERFILES["rag_mcp"])
+        assert "spacy download" not in content, (
+            "rag_mcp/Dockerfile should NOT bake pt_core_news_lg — "
+            "rag_mcp does not run Presidio (adds ~568 MB with no benefit)."
+        )
 
 
 @pytest.mark.infra
