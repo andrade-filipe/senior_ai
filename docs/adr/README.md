@@ -16,6 +16,7 @@ Registros de decisões arquiteturais aceitas ao longo do desenvolvimento. ADRs s
 | [0008](0008-robust-validation-policy.md) | Robustez de validação — taxonomia de erros, guardrails e shape de resposta | accepted | 2026-04-18 |
 | [0009](0009-runtime-config-via-env.md) | Configuração de runtime via variáveis de ambiente | accepted | 2026-04-20 |
 | [0010](0010-preocr-invocation-pattern.md) | Pré-OCR invocado pelo CLI (CLI-orchestrated pre-step) | accepted | 2026-04-20 |
+| [0011](0011-real-ocr-via-tesseract.md) | OCR real via Tesseract (supersede parcial de R11) | proposed | 2026-04-20 |
 
 ## Quando abrir uma ADR
 

@@ -18,7 +18,7 @@ Enumeração estável dos requisitos extraídos de [`DESAFIO.md`](./DESAFIO.md).
 | R08 | **Evidências de funcionamento**: logs de execução, capturas de tela da CLI, interface do Swagger. | "O que deve ser entregue" § 5 | Por marco em `docs/EVIDENCE/`. |
 | R09 | **README principal em português** com quickstart, instruções de Docker, explicação da arquitetura e seção "Transparência e Uso de IA". | "O que deve ser entregue" § 4 + "Transparência e Uso de IA" | Última fase (entrega). |
 | R10 | **Imagem de teste e JSON de especificação de exemplo** no repositório. | "O que deve ser entregue" §§ 2 e 3 | Fixture (`sample_medical_order.png` + `spec.example.json`). |
-| R11 | **Mock de OCR determinístico aceito no MVP**: dado um hash de imagem, retorna texto canônico; permite OCR real ser plugado no futuro sem quebrar contrato. | Decisão interna (projeto não exige OCR real) | Justificado em ADR posterior se trocarmos para OCR real. |
+| R11 | **Mock de OCR determinístico aceito no MVP**: dado um hash de imagem, retorna texto canônico; permite OCR real ser plugado no futuro sem quebrar contrato. | Decisão interna (projeto não exige OCR real) | **Parcialmente superseded por [ADR-0011](./adr/0011-real-ocr-via-tesseract.md) (2026-04-20)**: OCR real via Tesseract passa a ser a implementação principal; mock retido apenas como fast-path cache para testes determinísticos. O contrato público da tool MCP permanece intacto. |
 | R12 | **Transparência no uso de IA**: seção no README com abordagem de desenvolvimento, referências consultadas e estratégia de orquestração. | "Transparência e Uso de IA" | `ai-context/LINKS.md` alimenta esta seção. |
 
 ## Critérios de avaliação (do desafio) → requisitos
