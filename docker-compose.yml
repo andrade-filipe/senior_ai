@@ -117,6 +117,11 @@ services:
       # CLI-orchestrated pre-OCR tunables (ADR-0010 / spec 0010)
       PREOCR_MCP_TIMEOUT_SECONDS: "${PREOCR_MCP_TIMEOUT_SECONDS:-10}"
       PREOCR_MCP_CONNECT_RETRIES: "${PREOCR_MCP_CONNECT_RETRIES:-1}"
+      # Validator-pass safety net (spec 0009 Camada C). Default OFF.
+      AGENT_VALIDATOR_PASS_ENABLED: "${AGENT_VALIDATOR_PASS_ENABLED:-false}"
+      VALIDATOR_MODEL: "${VALIDATOR_MODEL:-gemini-2.5-flash-lite}"
+      VALIDATOR_MAX_INPUT_BYTES: "${VALIDATOR_MAX_INPUT_BYTES:-16384}"
+      VALIDATOR_TIMEOUT_SECONDS: "${VALIDATOR_TIMEOUT_SECONDS:-15}"
       # Compose DNS names override any localhost values from .env (AC10)
       OCR_MCP_URL: "${OCR_MCP_URL:-http://ocr-mcp:8001/sse}"
       RAG_MCP_URL: "${RAG_MCP_URL:-http://rag-mcp:8002/sse}"

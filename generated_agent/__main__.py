@@ -355,21 +355,42 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> RunnerSuccess:
         data = json.loads(stripped)
         result = RunnerResultAdapter.validate_python(data)
     except (json.JSONDecodeError, pydantic.ValidationError) as exc:
-        _LOGGER.error(
-            "agent.output.invalid",
-            extra={
-                "event": "agent.output.invalid",
-                "correlation_id": correlation_id,
-                "error": str(exc),
-            },
-        )
-        _exit_error(
-            code=_E_AGENT_OUTPUT_INVALID,
-            message="Saida do agente nao corresponde ao schema esperado.",
-            correlation_id=correlation_id,
-            hint="Verifique se o agente retornou JSON valido com status='success' ou status='error'.",
-            exit_code=3,
-        )
+        result = None
+        if os.environ.get("AGENT_VALIDATOR_PASS_ENABLED", "").lower() in {"1", "true", "yes"}:
+            from generated_agent import validator  # noqa: PLC0415
+
+            reformatted = validator._run_validator_pass(text, correlation_id)
+            if reformatted is not None:
+                try:
+                    retry_data = json.loads(_strip_json_fence(reformatted))
+                    result = RunnerResultAdapter.validate_python(retry_data)
+                except (json.JSONDecodeError, pydantic.ValidationError) as inner_exc:
+                    _LOGGER.warning(
+                        "agent.validator.fallback",
+                        extra={
+                            "event": "agent.validator.fallback",
+                            "correlation_id": correlation_id,
+                            "error": str(inner_exc),
+                        },
+                    )
+                    result = None
+
+        if result is None:
+            _LOGGER.error(
+                "agent.output.invalid",
+                extra={
+                    "event": "agent.output.invalid",
+                    "correlation_id": correlation_id,
+                    "error": str(exc),
+                },
+            )
+            _exit_error(
+                code=_E_AGENT_OUTPUT_INVALID,
+                message="Saida do agente nao corresponde ao schema esperado.",
+                correlation_id=correlation_id,
+                hint="Verifique se o agente retornou JSON valido com status='success' ou status='error'.",
+                exit_code=3,
+            )
 
     if isinstance(result, RunnerError):
         _LOGGER.error(

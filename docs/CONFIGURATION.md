@@ -34,6 +34,10 @@ cp .env.example .env
 | `SCHEDULING_OPENAPI_FETCH_TIMEOUT_SECONDS` | `10` | Timeout HTTP do agente quando baixa o `openapi.json` da `scheduling-api` no boot. | `generated_agent/agent.py` |
 | `PREOCR_MCP_TIMEOUT_SECONDS` | `10` | Timeout wall-clock do pré-OCR orquestrado pelo CLI (connect + `initialize` + `call_tool`). Na estourada: aborta com `E_OCR_UNKNOWN_IMAGE` (exit 4). ADR-0010 / spec 0010. | `generated_agent/preocr.py` |
 | `PREOCR_MCP_CONNECT_RETRIES` | `1` | Número de retries em erros de transporte do pré-OCR antes de abortar com `E_MCP_UNAVAILABLE` (exit 5). Não reinicia em timeout. ADR-0010. | `generated_agent/preocr.py` |
+| `AGENT_VALIDATOR_PASS_ENABLED` | `false` | Ativa a rede de segurança de reformulação via `google.genai` direto (sem ADK, sem tools) quando o parser primário falha. Default OFF. Quando ligada, mascara drifts do agente principal — use com cautela. Spec 0009 Camada C. | `generated_agent/validator.py` |
+| `VALIDATOR_MODEL` | `gemini-2.5-flash-lite` | Modelo Gemini usado pelo validator-pass. Mantido separado de `GEMINI_MODEL` para permitir tuning independente (agente principal × rede de segurança). | `generated_agent/validator.py` |
+| `VALIDATOR_MAX_INPUT_BYTES` | `16384` | Cap no tamanho do `raw_text` antes de invocar o validator-pass. Entrada maior retorna `None` (fallback ao parser atual → exit 3). | `generated_agent/validator.py` |
+| `VALIDATOR_TIMEOUT_SECONDS` | `15` | Timeout reservado para futuras iterações — hoje o call do `google.genai` usa defaults do SDK. | `generated_agent/validator.py` |
 | `OCR_MCP_URL` | `http://ocr-mcp:8001/sse` | URL SSE do OCR MCP. Use sempre o DNS do compose — `localhost` não funciona dentro do container. Também consumido pela etapa de pré-OCR da CLI. | `generated_agent/agent.py` |
 | `RAG_MCP_URL` | `http://rag-mcp:8002/sse` | URL SSE do RAG MCP. Idem. | `generated_agent/agent.py` |
 | `SCHEDULING_OPENAPI_URL` | `http://scheduling-api:8000/openapi.json` | URL do OpenAPI consumido pelo OpenAPIToolset do ADK. | `generated_agent/agent.py` |
