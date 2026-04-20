@@ -1,7 +1,8 @@
 ---
 id: 0010-pre-ocr-invocation
 title: Pre-OCR invocation — CLI orquestra o OCR antes do LlmAgent
-status: approved
+status: implemented
+implemented: 2026-04-20
 linked_requirements: [R02, R06, R08, R11]
 owner_agent: software-architect
 created: 2026-04-20

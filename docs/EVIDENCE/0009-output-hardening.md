@@ -105,18 +105,73 @@ def _prefilter_exams(exams: list[str]) -> list[str]:
 - Ignorar itens que começam com `<` (placeholders) ou `[` (bullets).
 - Regra absoluta de formato: primeira linha `{`, última `}`; fences explicitamente proibidos.
 
-## 5. E2E real (pós-hardening)
+## 5. E2E real (pós-hardening) — 2026-04-20 21:02 UTC
 
-**Pendente** — a execução E2E real com `gemini-2.5-pro` + pipeline hardened cabe ao usuário quando `.env` estiver populado e `docker compose` estiver rodando. Comando canônico:
+**Comando executado pelo operador:**
 
 ```
 docker compose up -d ocr-mcp rag-mcp scheduling-api
 docker compose run --rm generated-agent --image /fixtures/sample_medical_order.png
 ```
 
-Esperado: exit 0, tabela ASCII no stdout, `appointment_id` presente, logs `agent.preocr.prefilter` (se OCR devolver ruído) e `agent.run.done`.
+`.env` efetivo: `GEMINI_MODEL=gemini-2.5-pro`, `AGENT_VALIDATOR_PASS_ENABLED=false` (default — a Camada C ficou ociosa, a Camada B absorveu o drift).
 
-Se o modelo ainda drift apesar do prompt hardened, ativar `AGENT_VALIDATOR_PASS_ENABLED=true` no `.env` para acionar a rede de segurança da Camada C.
+### Evidência observada nos logs (transcript completo em `logs.txt`, 501 linhas)
+
+1. **Pré-OCR determinístico** (spec 0010) rodou contra a imagem correta:
+   ```json
+   {"event":"agent.preocr.invoked","sha256_prefix":"17c46fa5","mcp_url":"http://ocr-mcp:8001/sse"}
+   ```
+2. **OCR real** (spec 0011) devolveu 4 linhas com ruído típico de Tesseract:
+   ```
+   ['1 Hemegrama Completo', '2 Glicemiado Jejum', 'a Colesterol Total', '<LOCATION>']
+   ```
+3. **Camada D CLI pre-filter** eliminou `<LOCATION>` (placeholder PII) e limpou bullets `1 `/`2 `/`a `:
+   ```json
+   {"event":"agent.preocr.prefilter","raw_count":4,"filtered_count":3}
+   {"event":"agent.preocr.result","exam_count":3,"duration_ms":3798}
+   ```
+4. **RAG fuzzy** absorveu os typos de OCR em paralelo (3 tool-calls simultâneos):
+   ```
+   Hemegrama Completo  → Hemograma Completo  (HMG-001, score 0.9444)
+   Glicemiado Jejum    → Glicemia de Jejum   (GLI-001, score 0.9091)
+   Colesterol Total    → Colesterol Total    (COL-001, score 1.0000)
+   ```
+5. **Scheduling API** aceitou o POST (Gemini escolheu `scheduled_for=2027-01-03T09:00:00Z`, satisfazendo a regra ≥ hoje+48h):
+   ```
+   HTTP 201 — apt-7b3e2f883d48 — anon-a1b2c3d4
+   ```
+6. **Camada B fence-strip** (exatamente o que motivou o spec 0009): o Gemini 2.5 Pro embrulhou o JSON canônico em ` ```json ... ``` ` apesar do prompt hardened — `_strip_json_fence` extraiu o objeto limpo antes do `json.loads`, e o parser devolveu `RunnerSuccess` normal.
+7. **Saída final no stdout** (exit 0):
+   ```
+   +-----+------------------------+-----------+
+   | #   | Exame                  | Codigo    |
+   +-----+------------------------+-----------+
+   | 1   | Hemograma Completo     | HMG-001   |
+   | 2   | Glicemia de Jejum      | GLI-001   |
+   | 3   | Colesterol Total       | COL-001   |
+   +-----+------------------------+-----------+
+   Appointment ID: apt-7b3e2f883d48  |  Scheduled: 2027-01-03T09:00:00+00:00
+   ```
+   ```json
+   {"event":"agent.run.done","appointment_id":"apt-7b3e2f883d48","exam_count":3}
+   ```
+
+### AC coverage confirmado
+
+- **AC3 / AC4** (Camada B): `_strip_json_fence` removeu ` ```json ... ``` ` — pipeline não saiu com exit 3 apesar do drift confirmado do modelo.
+- **AC5** (Camada C): não acionada (prompt hardened foi suficiente); flag `AGENT_VALIDATOR_PASS_ENABLED=false` default conforme plano.
+- **AC8** (Camada D): `raw_count=4 → filtered_count=3` prova que placeholder `<LOCATION>` e bullets foram dropados antes do LLM.
+
+### Warning transitivo observado (cosmético)
+
+```
+/usr/local/lib/python3.12/site-packages/authlib/_joserfc_helpers.py:8:
+AuthlibDeprecationWarning: authlib.jose module is deprecated, please use joserfc instead.
+It will be compatible before version 2.0.0.
+```
+
+`authlib 1.7.0` é **dependência transitiva** de `google-adk 1.31.0` (verificado via `uv tree`). O warning é emitido pela própria authlib sobre uma reorganização interna sua (`authlib.jose` → `joserfc`). Não há ação nossa: aguarda o google-adk atualizar o pin quando a authlib 2.0 sair.
 
 ## 6. Códigos de erro finais (ADR-0008 + addendum 2026-04-21)
 

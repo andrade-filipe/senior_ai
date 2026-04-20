@@ -84,7 +84,7 @@ Cada teste **deve falhar** antes da implementação correspondente. `[DbC]` marc
 ## Evidence
 
 - [x] T090 — `uv run pytest tests/generated_agent/ -q` → 55 passed (21 novos) — capturado em `docs/EVIDENCE/0009-output-hardening.md`
-- [ ] T091 — E2E real pós-hardening (pendente; cabe ao operador — instruções em `docs/EVIDENCE/0009-output-hardening.md § 5`)
+- [x] T091 — E2E real pós-hardening executado 2026-04-20 21:02 UTC; transcript em `docs/EVIDENCE/0009-output-hardening.md § 5` (exit 0, `apt-7b3e2f883d48`, fence-strip absorveu drift do Gemini 2.5 Pro)
 - [x] T092 — addendum `E_AGENT_OUTPUT_REPORTED_ERROR` (exit 4) em `docs/adr/0008-robust-validation-policy.md`
 - [x] T093 — `ai-context/STATUS.md` atualizado com bloco 0009 done
 

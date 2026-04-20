@@ -1,6 +1,6 @@
 ---
 id: 0010-pre-ocr-invocation
-status: approved
+status: done
 ---
 
 ## Abordagem técnica

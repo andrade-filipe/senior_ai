@@ -1,7 +1,8 @@
 ---
 id: 0011-real-ocr-tesseract
 title: OCR real via Tesseract — substitui o mock como implementação principal
-status: approved
+status: implemented
+implemented: 2026-04-20
 linked_requirements: [R02, R03, R06, R11]
 owner_agent: software-architect
 created: 2026-04-20

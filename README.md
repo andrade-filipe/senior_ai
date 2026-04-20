@@ -36,6 +36,20 @@ Após o passo 4 o agente imprime no terminal uma tabela ASCII com os exames iden
 
 Swagger público da API: [http://localhost:8000/docs](http://localhost:8000/docs).
 
+## Entregáveis do desafio
+
+Mapeamento direto da seção [“O que deve ser entregue”](docs/DESAFIO.md#o-que-deve-ser-entregue) do enunciado para os artefatos no repositório:
+
+| # | Entregável | Onde está |
+|---|---|---|
+| 1 | **Código-fonte completo** (transpilador, servidores MCP, API FastAPI, configurações Docker) | [`transpiler/`](transpiler/), [`ocr_mcp/`](ocr_mcp/), [`rag_mcp/`](rag_mcp/), [`scheduling_api/`](scheduling_api/), [`security/`](security/), [`generated_agent/`](generated_agent/) + [`docker-compose.yml`](docker-compose.yml) e `Dockerfile` por serviço |
+| 2 | **JSON de especificação** de exemplo | [`docs/fixtures/spec.example.json`](docs/fixtures/spec.example.json) — consumido pelo transpilador via `uv run python -m transpiler docs/fixtures/spec.example.json generated_agent` |
+| 3 | **Imagem de teste** do pedido médico fictício | [`docs/fixtures/sample_medical_order.png`](docs/fixtures/sample_medical_order.png) — 9469 bytes, sha256 `17c46fa5…`, montada em `/fixtures/` no container `generated-agent` |
+| 4 | **README detalhado** com instruções (Docker, transpilador, agente) | este arquivo — [Quickstart](#quickstart) acima; execução isolada do transpilador em [`docs/tutorials/01-transpiler-cli.md`](docs/tutorials/01-transpiler-cli.md); runbook E2E completo com Gemini real em [`docs/runbooks/e2e-manual-gemini.md`](docs/runbooks/e2e-manual-gemini.md) |
+| 5 | **Evidências de funcionamento** (logs, CLI, Swagger) | [`docs/EVIDENCE/`](docs/EVIDENCE/) — 11 arquivos (blocos 0001–0011). Destaque para o **primeiro E2E verde end-to-end de 2026-04-20**: [`0009-output-hardening.md § 5`](docs/EVIDENCE/0009-output-hardening.md), [`0010-pre-ocr-invocation.md`](docs/EVIDENCE/0010-pre-ocr-invocation.md) e [`0011-real-ocr-tesseract.md § T092 Run 2`](docs/EVIDENCE/0011-real-ocr-tesseract.md). Swagger exposto em [http://localhost:8000/docs](http://localhost:8000/docs) quando a stack está de pé |
+
+Cobertura acima do escopo mínimo (transparência por ADR-0004): 11 ADRs aceitas em [`docs/adr/`](docs/adr/), 11 specs SDD completas em [`docs/specs/`](docs/specs/), suíte de testes multi-serviço em [`tests/`](tests/) + `<servico>/tests/`, tutoriais focados em [`docs/tutorials/`](docs/tutorials/README.md), catálogo de 115 exames SIGTAP em [`rag_mcp/rag_mcp/data/exams.csv`](rag_mcp/rag_mcp/data/exams.csv).
+
 ## Stack
 
 Decisões fechadas em [ADR-0005](docs/adr/0005-dev-stack.md):
@@ -47,6 +61,8 @@ Decisões fechadas em [ADR-0005](docs/adr/0005-dev-stack.md):
 - **Microsoft Presidio** + 4 custom recognizers brasileiros (CPF/CNPJ/RG/Phone) com validação de dígito verificador ([ADR-0003](docs/adr/0003-pii-double-layer.md)).
 - **Jinja2** + gate `ast.parse` no transpilador ([ADR-0002](docs/adr/0002-transpiler-jinja-ast.md)).
 - **rapidfuzz** + catálogo CSV de 115 exames SIGTAP no RAG MCP ([ADR-0007](docs/adr/0007-rag-fuzzy-and-catalog.md)).
+- **Tesseract 5** (`tesseract-ocr` + `tesseract-ocr-por` via apt) + `pytesseract` + `Pillow` no OCR MCP ([ADR-0011](docs/adr/0011-real-ocr-via-tesseract.md)) — substituiu o mock por OCR real, mantendo lookup por hash como fast-path de cache.
+- **CLI-orchestrated pre-step** ([ADR-0010](docs/adr/0010-preocr-invocation-pattern.md)): a CLI chama o OCR-MCP via `mcp.client.sse.sse_client` **antes** do `runner.run_async`, injetando a lista de exames como texto no prompt — contorna a limitação do SDK `google-genai` de não conseguir encaminhar bytes do `Part.from_bytes` como argumento de function-call.
 - Imagens Docker em `python:3.12-slim`; healthchecks com `urlopen(..., timeout=2)`.
 - **GitHub Actions** mínimo para smoke de CI.
 
@@ -91,8 +107,9 @@ Cinco serviços na rede do Compose, mais o transpilador que roda em build-time:
 | Entender o que acontece passo a passo quando o agente roda | [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md). |
 | Chamar uma funcionalidade isolada (transpilador, OCR, RAG, API, agente, PII) | [`docs/tutorials/`](docs/tutorials/README.md) — seis tutoriais focados. |
 | Executar o E2E manual com Gemini real (T021) | [`docs/runbooks/e2e-manual-gemini.md`](docs/runbooks/e2e-manual-gemini.md). |
-| Consultar decisões arquiteturais | [`docs/adr/`](docs/adr/). |
-| Verificar evidências de funcionamento por bloco | [`docs/EVIDENCE/`](docs/EVIDENCE/). |
+| Consultar decisões arquiteturais | [`docs/adr/`](docs/adr/) — 11 ADRs, índice em [`docs/adr/README.md`](docs/adr/README.md). |
+| Verificar evidências de funcionamento por bloco | [`docs/EVIDENCE/`](docs/EVIDENCE/) — 11 arquivos (0001..0011). |
+| Ver a evidência do **primeiro E2E verde end-to-end** (2026-04-20) | [`docs/EVIDENCE/0009-output-hardening.md § 5`](docs/EVIDENCE/0009-output-hardening.md) + [`0010-pre-ocr-invocation.md`](docs/EVIDENCE/0010-pre-ocr-invocation.md) + [`0011-real-ocr-tesseract.md § T092 Run 2`](docs/EVIDENCE/0011-real-ocr-tesseract.md). |
 | Rastrear requisitos originais do desafio | [`docs/DESAFIO.md`](docs/DESAFIO.md) + [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md). |
 | Ver as fontes externas que apoiaram as decisões | [`docs/REFERENCES.md`](docs/REFERENCES.md). |
 
@@ -227,6 +244,16 @@ Lista completa, agrupada por domínio e ancorada em cada ADR, em [`docs/REFERENC
 ### Configuração em runtime (ADR-0009)
 
 A superfície de configuração do sistema é documentada em [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) e formalizada na [ADR-0009](docs/adr/0009-runtime-config-via-env.md). O princípio é *"spec define o default, `.env` sobrescreve em runtime para todo parâmetro com legitimidade operacional"*: modelo Gemini, timeouts, limites de tamanho, thresholds de PII e fuzzy match, caminho do catálogo RAG e modelos spaCy são todos tunáveis sem tocar em código. Em particular, o modelo Gemini pode ser trocado editando `GEMINI_MODEL` no `.env` e rodando `docker compose up -d --force-recreate generated-agent` — capacidade motivada pelo incidente de 2026-04-20, em que o `gemini-2.5-flash` com function-calling retornou `HTTP 503` por saturação server-side do pool Google enquanto outros modelos respondiam normalmente. Calibrações Presidio por-recognizer e contratos públicos da API permanecem hardcoded, com justificativa explícita na ADR.
+
+### Evolução pós-entrega inicial (specs 0009, 0010, 0011)
+
+Três ciclos SDD+TDD adicionais foram conduzidos depois da Onda 5 original, motivados por evidências de runs E2E reais — cada um registrado no ciclo completo (spec + plan + tasks + ADR + RED + GREEN + evidência):
+
+- **Spec 0009 — output hardening** ([`docs/specs/0009-output-hardening/`](docs/specs/0009-output-hardening/)): três camadas de tolerância na CLI para lidar com drift de formato do Gemini 2.5 Pro — `_strip_json_fence` para absorver ``` ```json ``` ``` fences indesejados, união discriminada `RunnerSuccess | RunnerError` com exit 4 (`E_AGENT_OUTPUT_REPORTED_ERROR`), validator-pass opcional (`AGENT_VALIDATOR_PASS_ENABLED=false` default) como rede de segurança, e CLI pre-filter que remove placeholders PII (`<LOCATION>`, `<PERSON>`) e bullets residuais (`1. `, `2) `, `a) `) antes de o prompt chegar ao LLM.
+- **Spec 0010 — pre-ocr invocation** ([`docs/specs/0010-pre-ocr-invocation/`](docs/specs/0010-pre-ocr-invocation/) + [ADR-0010](docs/adr/0010-preocr-invocation-pattern.md)): o passo 1 do fluxo deixou de ser uma function-call do LLM e virou uma chamada MCP-SSE direta da CLI contra `ocr-mcp:8001` — contornando a limitação documentada em codelabs oficiais do ADK (*"NEVER ask user to provide base64 data"*) de o Gemini fabricar base64 alucinado quando uma tool pede bytes como argumento. Supersede parcial de ADR-0006.
+- **Spec 0011 — OCR real via Tesseract** ([`docs/specs/0011-real-ocr-tesseract/`](docs/specs/0011-real-ocr-tesseract/) + [ADR-0011](docs/adr/0011-real-ocr-via-tesseract.md)): substituição do mock determinístico por `pytesseract` + `tesseract-ocr-por`, preservando o dict de hashes como fast-path de cache opcional. Filtro pós-OCR dropa headers (`PEDIDOMEDICO`, `CPF`, `Exames Solicitados`, etc.) e respeita `_MIN_LINE_LEN=5` com allowlist de acrônimos (`TSH`, `HDL`, `T3`…). Supersede parcial de R11.
+
+O **primeiro E2E completamente verde** do desafio (`docker compose run --rm generated-agent --image /fixtures/sample_medical_order.png` → exit 0 + `appointment_id=apt-7b3e2f883d48`) foi capturado em 2026-04-20 21:02 UTC e está documentado cruzadamente em [`docs/EVIDENCE/0009-output-hardening.md § 5`](docs/EVIDENCE/0009-output-hardening.md), [`0010-pre-ocr-invocation.md`](docs/EVIDENCE/0010-pre-ocr-invocation.md) e [`0011-real-ocr-tesseract.md § T092 Run 2`](docs/EVIDENCE/0011-real-ocr-tesseract.md). Um deprecation warning cosmético de `authlib.jose` aparece no startup — é transitivo de `google-adk 1.31.0` (a própria `authlib 1.7.0` avisa que se reorganizará para `joserfc` antes de 2.0); nenhuma ação do projeto é requerida.
 
 ### Commits contam história
 
