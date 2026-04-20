@@ -37,6 +37,44 @@ _PROMPT_SUFFIX = (
 # Server ToolError message format: "[E_OCR_*] <msg> — <hint>"
 _TOOL_ERROR_RE = re.compile(r"\[(E_OCR_[A-Z_]+)\]")
 
+# Camada D filters (spec 0009 T083) — OCR noise observed in 2026-04-20 E2E:
+#   <LOCATION>, <PERSON>, <CPF> leaking from the PII mask layer;
+#   "1. Hemograma", "2) Glicemia", "a) Colesterol" bullet prefixes from Tesseract.
+_PII_PLACEHOLDER_RE = re.compile(r"^<[A-Z_]+>$")
+_BULLET_PREFIX_RE = re.compile(r"^(?:\d+[.)\s]+|[a-zA-Z][).\s]+)")
+
+
+def _prefilter_exams(exams: list[str]) -> list[str]:
+    """Clean the OCR output before it reaches the LlmAgent — spec 0009 Camada D.
+
+    Two defects leak from the OCR layer in practice:
+      1. PII placeholders (``<LOCATION>``, ``<PERSON>``, ``<CPF>``) — the
+         mask replaced the entity but the full line was returned as an exam.
+      2. Numeric / alpha bullet prefixes (``1. ``, ``2) ``, ``a) ``) — Tesseract
+         transcribes the numbered list and the prefix stays glued to the name.
+
+    Both confuse the RAG query (``search_exam_code("1. Hemograma")`` scores
+    below 0.80 and triggers spurious ``list_exams`` fallbacks).
+
+    Args:
+        exams: Raw list returned by the OCR MCP server.
+
+    Returns:
+        New list with placeholders dropped, bullets stripped, whitespace
+        trimmed, and empty strings removed. Preserves input order.
+    """
+    out: list[str] = []
+    for item in exams:
+        if not isinstance(item, str):
+            continue
+        trimmed = item.strip()
+        if not trimmed or _PII_PLACEHOLDER_RE.match(trimmed):
+            continue
+        cleaned = _BULLET_PREFIX_RE.sub("", trimmed).strip()
+        if cleaned:
+            out.append(cleaned)
+    return out
+
 
 class _PreOcrError(Exception):
     """Raised when the pre-OCR step fails.
@@ -212,16 +250,27 @@ async def _run_preocr(
             break
         else:
             duration_ms = int((loop.time() - started) * 1000)
+            filtered = _prefilter_exams(exams)
+            if len(filtered) != len(exams):
+                _LOGGER.info(
+                    "agent.preocr.prefilter",
+                    extra={
+                        "event": "agent.preocr.prefilter",
+                        "correlation_id": correlation_id,
+                        "raw_count": len(exams),
+                        "filtered_count": len(filtered),
+                    },
+                )
             _LOGGER.info(
                 "agent.preocr.result",
                 extra={
                     "event": "agent.preocr.result",
                     "correlation_id": correlation_id,
-                    "exam_count": len(exams),
+                    "exam_count": len(filtered),
                     "duration_ms": duration_ms,
                 },
             )
-            return exams
+            return filtered
 
     raise _PreOcrError(
         code="E_MCP_UNAVAILABLE",

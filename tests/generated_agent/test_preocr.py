@@ -193,3 +193,47 @@ def test_timeout_raises_preocr_error() -> None:
     assert exc_info.value.code == "E_MCP_UNAVAILABLE", (
         f"expected code E_MCP_UNAVAILABLE, got {exc_info.value.code!r}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Camada D — CLI pre-filter (spec 0009 T080–T082)
+# ---------------------------------------------------------------------------
+
+
+class TestPrefilterExams:
+    """Spec 0009 Camada D — drop PII placeholders + strip bullet prefixes.
+
+    Evidence (2026-04-20 E2E with gemini-2.5-pro): OCR returned
+    ["Hemograma Completo", "Glicemia de Jejum", "<LOCATION>", "1. Colesterol"]
+    — the <LOCATION> placeholder was sent to the LLM as a real exam and the
+    numeric bullet leaked into the RAG query. Pre-filter runs in the CLI
+    before _build_preocr_prompt.
+    """
+
+    def test_prefilter_drops_pii_placeholders(self) -> None:
+        from generated_agent.preocr import _prefilter_exams  # noqa: PLC0415
+
+        result = _prefilter_exams(
+            ["Hemograma", "<LOCATION>", "<PERSON>", "<CPF>", "Glicemia"]
+        )
+        assert result == ["Hemograma", "Glicemia"]
+
+    def test_prefilter_strips_numeric_bullets(self) -> None:
+        from generated_agent.preocr import _prefilter_exams  # noqa: PLC0415
+
+        result = _prefilter_exams(
+            ["1. Hemograma Completo", "2) Glicemia de Jejum", "a) Colesterol Total"]
+        )
+        assert result == ["Hemograma Completo", "Glicemia de Jejum", "Colesterol Total"]
+
+    def test_prefilter_preserves_clean_names(self) -> None:
+        from generated_agent.preocr import _prefilter_exams  # noqa: PLC0415
+
+        clean = ["Hemograma Completo", "Glicemia de Jejum", "TSH"]
+        assert _prefilter_exams(clean) == clean
+
+    def test_prefilter_drops_empty_after_strip(self) -> None:
+        from generated_agent.preocr import _prefilter_exams  # noqa: PLC0415
+
+        result = _prefilter_exams(["   ", "1. ", "Hemograma"])
+        assert result == ["Hemograma"]
