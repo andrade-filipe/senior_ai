@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from typing import Callable
 
 from security.guard import pii_mask
@@ -33,7 +34,10 @@ _LOGGER = logging.getLogger(__name__)
 
 # Match guard.py _TEXT_MAX_BYTES cap — text exceeding this cannot be processed
 # by pii_mask anyway (it would raise E_PII_TEXT_SIZE). Skip and log a warning.
-_MAX_TEXT_BYTES = 100 * 1024  # 100 KB
+# Tunable via PII_CALLBACK_TEXT_MAX_BYTES env (ADR-0009); default reproduces the
+# pre-ADR-0009 100 KB cap. Kept separate from PII_TEXT_MAX_BYTES because this
+# surface (LLM prompt parts) can legitimately diverge from the guard's own cap.
+_MAX_TEXT_BYTES = int(os.environ.get("PII_CALLBACK_TEXT_MAX_BYTES", str(100 * 1024)))  # 100 KB
 
 
 def make_pii_callback(
@@ -124,7 +128,7 @@ def _mask_part(part: object, allow_list: list[str]) -> None:
         return
 
     try:
-        result = pii_mask(raw, language="pt", allow_list=allow_list)
+        result = pii_mask(raw, allow_list=allow_list)
         part.text = result.masked_text  # type: ignore[attr-defined]
     except Exception as exc:  # noqa: BLE001
         # MINOR-3: replace with safe sentinel — do NOT silently pass PII through

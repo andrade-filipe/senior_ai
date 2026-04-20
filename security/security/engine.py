@@ -27,6 +27,7 @@ MAJOR-6 note — BR recognizers and language='en':
 from __future__ import annotations
 
 import logging
+import os
 from functools import lru_cache
 
 from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
@@ -40,10 +41,15 @@ _LOGGER = logging.getLogger(__name__)
 
 _SUPPORTED_LANGUAGES = frozenset({"pt", "en"})
 
-# spaCy model names keyed by language code
+# spaCy model names keyed by language code.
+# Tunable via PII_SPACY_MODEL_PT / PII_SPACY_MODEL_EN env (ADR-0009) — allows
+# swapping to `_sm` on constrained hosts without rebuild. When overriding, the
+# model must be baked into the Dockerfile (coordinated ARG PII_SPACY_MODEL_*)
+# or pre-installed in the runtime environment. _SUPPORTED_LANGUAGES remains
+# hardcoded: adding a language requires a new spaCy model + test coverage.
 _SPACY_MODELS: dict[str, str] = {
-    "pt": "pt_core_news_lg",
-    "en": "en_core_web_lg",
+    "pt": os.environ.get("PII_SPACY_MODEL_PT", "pt_core_news_lg"),
+    "en": os.environ.get("PII_SPACY_MODEL_EN", "en_core_web_lg"),
 }
 
 

@@ -18,7 +18,10 @@ RUN cd /app/ocr_mcp && uv pip install --system --no-cache .
 # spaCy model for Presidio (ADR-0003). Bake at build time — runtime first-call
 # download (~568 MB) would trip the 5 s PII guard timeout and surface as
 # E_PII_TIMEOUT / pii.callback.error in the callback.
-RUN python -m spacy download pt_core_news_lg
+# ARG lets the operator swap the model (e.g. pt_core_news_sm) via build.args
+# in docker-compose.yml without touching application code (ADR-0009).
+ARG PII_SPACY_MODEL_PT=pt_core_news_lg
+RUN python -m spacy download $PII_SPACY_MODEL_PT
 
 # SSE port (ADR-0001)
 EXPOSE 8001

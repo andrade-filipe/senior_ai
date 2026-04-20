@@ -32,6 +32,7 @@ from __future__ import annotations
 import atexit
 import logging
 import multiprocessing as mp
+import os
 import re
 import threading
 from multiprocessing.pool import Pool
@@ -45,10 +46,16 @@ from security.models import EntityHit, MaskedResult, sha256_prefix
 
 _LOGGER = logging.getLogger(__name__)
 
-# Hard limits (ADR-0008 + ARCHITECTURE.md § Guardrails de tamanho)
-_TEXT_MAX_BYTES = 100 * 1024  # 100 KB
-_ALLOW_LIST_MAX = 1000  # 1 000 items (ADR-0008; spec AC16 — ADR-0008 governs)
-_TIMEOUT_SECONDS = 5.0
+# Hard limits (ADR-0008 + ARCHITECTURE.md § Guardrails de tamanho).
+# Defaults reproduce pre-ADR-0009 behaviour; env overrides enable operational tuning
+# without rebuild (ADR-0009 — spec=default, env=override for ops). Recognizer scores
+# remain hardcoded calibrations (see recognizers/br_*.py) — only the aggregate
+# threshold is exposed via PII_SCORE_THRESHOLD below.
+_TEXT_MAX_BYTES = int(os.environ.get("PII_TEXT_MAX_BYTES", str(100 * 1024)))  # 100 KB
+_ALLOW_LIST_MAX = int(os.environ.get("PII_ALLOW_LIST_MAX", "1000"))  # 1 000 items (ADR-0008; spec AC16)
+_TIMEOUT_SECONDS = float(os.environ.get("PII_TIMEOUT_SECONDS", "5"))
+_PII_SCORE_THRESHOLD = float(os.environ.get("PII_SCORE_THRESHOLD", "0.5"))
+_DEFAULT_LANGUAGE = os.environ.get("PII_DEFAULT_LANGUAGE", "pt")
 
 # Entities to detect (all entities in the ARCHITECTURE table except DATE_TIME)
 _ENTITIES = [
@@ -170,7 +177,7 @@ def _worker_analyze(
 
 def pii_mask(
     text: str,
-    language: str = "pt",
+    language: str | None = None,
     allow_list: list[str] | None = None,
     correlation_id: str | None = None,
 ) -> MaskedResult:
@@ -215,6 +222,8 @@ def pii_mask(
         PIIError: code='E_PII_ENGINE' — Presidio/spaCy failed to initialise.
     """
     # -- Pre-conditions (border checks before touching the engine) --
+    if language is None:
+        language = _DEFAULT_LANGUAGE
     validate_language(language)
     _check_text_size(text)
     _check_allow_list_size(allow_list)
@@ -326,11 +335,16 @@ def _analyze_and_anonymize(
         MaskedResult with masked_text and entity metadata.
     """
     # Analyse — returns list[RecognizerResult].
-    # score_threshold=0.5 drops low-confidence matches (e.g. BR_CPF with invalid
-    # checksum scored 0.1 and boosted to 0.45 by Presidio's context enhancer
-    # still stays below 0.5 → dropped; AC6/AC7).
+    # score_threshold=0.5 (default) drops low-confidence matches (e.g. BR_CPF with
+    # invalid checksum scored 0.1 and boosted to 0.45 by Presidio's context
+    # enhancer still stays below 0.5 → dropped; AC6/AC7). Tunable via
+    # PII_SCORE_THRESHOLD env (ADR-0009) — individual recognizer scores remain
+    # hardcoded calibrations intentionally coupled to this threshold.
     analyzer_results = analyzer.analyze(
-        text=text, language=language, entities=_ENTITIES, score_threshold=0.5
+        text=text,
+        language=language,
+        entities=_ENTITIES,
+        score_threshold=_PII_SCORE_THRESHOLD,
     )
 
     # Filter out allow-listed tokens (AC12)

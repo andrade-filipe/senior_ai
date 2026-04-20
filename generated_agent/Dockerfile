@@ -19,7 +19,10 @@ RUN cd /app/generated_agent && uv pip install --system --no-cache .
 
 # spaCy model — PII Layer 2 (before_model_callback) runs in-process inside
 # the agent container. Runtime download would trip the 5 s guard timeout.
-RUN python -m spacy download pt_core_news_lg
+# ARG lets the operator swap the model via build.args in docker-compose.yml
+# without modifying application code (ADR-0009).
+ARG PII_SPACY_MODEL_PT=pt_core_news_lg
+RUN python -m spacy download $PII_SPACY_MODEL_PT
 
 # Google Gemini direct API — no Vertex AI (ADR-0005)
 ENV GOOGLE_GENAI_USE_VERTEXAI=FALSE
