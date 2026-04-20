@@ -26,6 +26,8 @@ from __future__ import annotations
 import logging
 import os
 
+from urllib.parse import urlparse
+
 import httpx
 from collections.abc import Callable
 from typing import Any
@@ -88,7 +90,15 @@ def _load_{{ tool.name | replace("-", "_") }}_toolset(correlation_id: str) -> "O
         headers={"X-Correlation-ID": correlation_id},
     )
     resp.raise_for_status()
-    return OpenAPIToolset(spec_dict=resp.json())
+    spec_dict = resp.json()
+    # FastAPI does not emit a `servers` entry by default; without it the
+    # OpenAPIToolset constructs requests with only the path and httpx rejects
+    # them with UnsupportedProtocol. Derive the base URL from the spec URL
+    # itself so the fix works for any spec that omits `servers`.
+    if not spec_dict.get("servers"):
+        parsed = urlparse(_{{ tool.name | replace("-", "_") }}_openapi_url)
+        spec_dict["servers"] = [{"url": f"{parsed.scheme}://{parsed.netloc}"}]
+    return OpenAPIToolset(spec_dict=spec_dict)
 {% endfor %}
 
 

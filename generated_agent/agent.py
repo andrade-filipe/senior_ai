@@ -24,6 +24,8 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+from urllib.parse import urlparse
+
 import httpx
 from google.adk.agents import LlmAgent
 from google.adk.tools.base_tool import BaseTool
@@ -81,6 +83,13 @@ def _load_scheduling_toolset(correlation_id: str) -> OpenAPIToolset:
     # NOTE: OpenAPIToolset does not forward per-request headers to tool calls.
     # The X-Correlation-ID is passed on the spec fetch only; tool calls will
     # not carry it. This is an ADK limitation (BLOCKER-2 partial mitigation).
+    # FastAPI does not emit a `servers` entry by default; without it the
+    # OpenAPIToolset constructs requests with only the path and httpx rejects
+    # them with UnsupportedProtocol. Derive the base URL from the spec URL
+    # itself so the fix works for any spec that omits `servers`.
+    if not spec_dict.get("servers"):
+        parsed = urlparse(_SCHEDULING_OPENAPI_URL)
+        spec_dict["servers"] = [{"url": f"{parsed.scheme}://{parsed.netloc}"}]
     return OpenAPIToolset(spec_dict=spec_dict)
 
 
