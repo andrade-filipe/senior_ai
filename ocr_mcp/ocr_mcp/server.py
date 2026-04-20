@@ -31,14 +31,18 @@ from mcp.server.fastmcp import FastMCP
 # If this import fails, check: https://github.com/modelcontextprotocol/python-sdk
 from mcp.server.fastmcp.exceptions import ToolError
 
+from ocr_mcp import fixtures, ocr
 from ocr_mcp.errors import OcrError
-from ocr_mcp.fixtures import lookup
 from ocr_mcp.logging_ import get_logger
+from ocr_mcp.ocr import OcrTimeoutError as _OcrTimeoutError
 
 # Guardrail caps (ADR-0008 § Guardrails de tamanho)
 _IMAGE_MAX_BYTES = int(os.environ.get("OCR_IMAGE_MAX_BYTES", str(5 * 1024 * 1024)))  # 5 MB decoded
 _OCR_TIMEOUT_S = float(os.environ.get("OCR_TIMEOUT_SECONDS", "5"))  # AC17
 _DEFAULT_LANGUAGE = os.environ.get("OCR_DEFAULT_LANGUAGE", "pt")
+# Tesseract language code (spec 0011, ADR-0009).
+# Separate from OCR_DEFAULT_LANGUAGE which controls the PII mask language.
+_TESSERACT_LANG = os.environ.get("OCR_TESSERACT_LANG", "por")
 
 logger = get_logger("ocr-mcp")
 
@@ -63,7 +67,7 @@ def _raise_tool_error(err: OcrError) -> None:
 
 
 async def _do_ocr(image_base64: str) -> list[str]:
-    """Execute the deterministic OCR mock pipeline.
+    """Orchestrate fixture fast-path + real OCR + PII Layer 1.
 
     Pre:
         image_base64 is a valid base64 string and decoded bytes <= 5 MB.
@@ -71,6 +75,7 @@ async def _do_ocr(image_base64: str) -> list[str]:
 
     Post:
         Return value has passed through security.pii_mask() — no raw PII.
+        Delegates to real OCR (ocr.extract_exam_lines) only on fixture miss.
 
     Args:
         image_base64: Valid, size-checked base64 string.
@@ -78,22 +83,73 @@ async def _do_ocr(image_base64: str) -> list[str]:
     Returns:
         List of exam names with PII masked.
     """
-    # Import here to avoid circular issues and allow easy mock in tests
-    from security import pii_mask  # noqa: PLC0415
+    from security import pii_mask  # noqa: PLC0415 — avoids import-time side effects
 
-    names = lookup(image_base64)
+    # --- Fast-path: SHA-256 fixture cache (spec 0011 AC1) ---
+    raw_exams = fixtures.lookup(image_base64)
 
-    # Apply PII mask item by item (AC4, ADR-0003 line 1).
+    if raw_exams is not None:
+        # Cache hit — log and skip Tesseract entirely.
+        logger.info(
+            "ocr.lookup.hit",
+            extra={"event": "ocr.lookup.hit"},
+        )
+    else:
+        # Cache miss — delegate to real Tesseract OCR (spec 0011 AC2).
+        logger.info(
+            "ocr.lookup.miss",
+            extra={"event": "ocr.lookup.miss"},
+        )
+        image_bytes = base64.b64decode(image_base64, validate=True)
+        byte_size = len(image_bytes)
+
+        t_start = time.monotonic()
+        logger.info(
+            "ocr.tesseract.invoked",
+            extra={
+                "event": "ocr.tesseract.invoked",
+                "image_size": byte_size,
+                "lang": _TESSERACT_LANG,
+            },
+        )
+
+        try:
+            raw_exams = await ocr.extract_exam_lines(
+                image_bytes,
+                lang=_TESSERACT_LANG,
+                timeout_s=_OCR_TIMEOUT_S,
+            )
+        except _OcrTimeoutError:
+            logger.error(
+                "ocr.tesseract.timeout",
+                extra={"event": "ocr.tesseract.timeout", "lang": _TESSERACT_LANG},
+            )
+            # Convert Tesseract-internal timeout to asyncio.TimeoutError so that
+            # the outer asyncio.wait_for in extract_exams_from_image can handle it
+            # uniformly and emit E_OCR_TIMEOUT. Both paths (asyncio cancel + Tesseract
+            # subprocess timeout) result in ToolError(E_OCR_TIMEOUT) to the caller.
+            raise asyncio.TimeoutError from None
+
+        duration_ms = (time.monotonic() - t_start) * 1000
+        logger.info(
+            "ocr.tesseract.result",
+            extra={
+                "event": "ocr.tesseract.result",
+                "filtered_line_count": len(raw_exams),
+                "duration_ms": round(duration_ms, 1),
+                "lang": _TESSERACT_LANG,
+            },
+        )
+
+    # Apply PII mask item by item (Layer 1 — ADR-0003, AC3).
     # pii_mask runs Presidio under multiprocessing.Pool (blocking call); wrap
     # in asyncio.to_thread so the outer asyncio.wait_for timeout can actually
     # preempt it. Without this, a stuck pool call would not honor AC17.
     masked_names: list[str] = []
-    for name in names:
+    for name in raw_exams:
         result = await asyncio.to_thread(pii_mask, name, language=_DEFAULT_LANGUAGE)
         masked_names.append(result.masked_text)
 
-    # When list is empty apply pii_mask to empty string to satisfy AC3:
-    # any fallback text also passes through pii_mask before returning.
     return masked_names
 
 
