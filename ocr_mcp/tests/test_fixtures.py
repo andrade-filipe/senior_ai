@@ -61,30 +61,38 @@ class TestKnownHashReturnsCannedList:
         assert "Colesterol Total" in result
 
 
-class TestUnknownHashReturnsEmpty:
-    """T012 [AC3]: unknown hash → [] without raising."""
+class TestUnknownHashReturnsNone:
+    """T012 [AC3/AC10]: unknown hash → None (spec 0011 breaking change).
 
-    def test_unknown_hash_returns_empty_without_error(self) -> None:
-        """T012: lookup() returns [] for an image not in FIXTURES."""
+    NOTE: contract changed in spec 0011 (Onda C GREEN). lookup() now returns
+    None on miss instead of [] — callers must delegate to real OCR on None.
+    """
+
+    def test_unknown_hash_returns_none_without_error(self) -> None:
+        """T012: lookup() returns None for an image not in FIXTURES (AC10)."""
         # Create a base64 string that definitely won't be in FIXTURES
         unknown_bytes = b"this_is_definitely_not_a_fixture_image_xyz987" * 100
         unknown_b64 = base64.b64encode(unknown_bytes).decode()
 
         result = lookup(unknown_b64)
 
-        assert result == []
-        assert isinstance(result, list)
+        assert result is None, (
+            f"lookup() must return None on miss (AC10), but got: {result!r}"
+        )
 
-    def test_unknown_returns_list_not_none(self) -> None:
-        """T012: return is always a list, never None."""
+    def test_unknown_returns_none_not_list(self) -> None:
+        """T012: miss returns None, not a list (new contract AC10)."""
         b64 = base64.b64encode(b"random_unknown_content_xyz_789").decode()
         result = lookup(b64)
-        assert result is not None
-        assert isinstance(result, list)
+        assert result is None, (
+            f"Expected None on miss, got {result!r}"
+        )
 
-    def test_unknown_image_returns_empty_not_error(self) -> None:
-        """T012 [AC3]: unknown image should not raise any exception."""
+    def test_unknown_image_returns_none_not_error(self) -> None:
+        """T012 [AC10]: unknown image should not raise any exception — returns None."""
         b64 = base64.b64encode(b"some_completely_different_content_abc").decode()
         # Must not raise
         result = lookup(b64)
-        assert result == []
+        assert result is None, (
+            f"Expected None on miss, got {result!r}"
+        )

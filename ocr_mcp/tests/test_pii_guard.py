@@ -14,10 +14,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from ocr_mcp import fixtures as fix_module
 from ocr_mcp.fixtures import FIXTURES
 
 
@@ -33,9 +34,14 @@ class TestOutputHasNoRawPii:
             CPF: 111.444.777-35
         The canned fixture list contains only exam names, but the test also
         verifies that pii_mask is called on every item returned.
+
+        NOTE (spec 0011): lookup() now returns None on miss (breaking change).
+        Tests that pass non-image bytes must mock fixtures.lookup so the fast-path
+        is taken (no real OCR attempt on non-image bytes).
         """
-        # Register the fixture
-        FIXTURES[sample_png_sha256] = [
+        # Register the fixture under a synthetic hash and make lookup return it.
+        fake_b64 = base64.b64encode(b"fake_image_content_for_pii_test" * 100).decode()
+        canned = [
             "Hemograma Completo",
             "Glicemia de Jejum",
             "Colesterol Total",
@@ -45,11 +51,10 @@ class TestOutputHasNoRawPii:
         mock_masked = MagicMock()
         mock_masked.masked_text = "Hemograma Completo"  # name has no PII, stays same
 
-        with patch("security.pii_mask", return_value=mock_masked) as mock_pii:
-            from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
-            result = await extract_exams_from_image(
-                base64.b64encode(b"fake_image_content_for_pii_test" * 100).decode()
-            )
+        with patch("ocr_mcp.fixtures.lookup", return_value=canned):
+            with patch("security.pii_mask", return_value=mock_masked):
+                from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
+                result = await extract_exams_from_image(fake_b64)
 
         # pii_mask was called for each item (or not at all for empty list)
         # The key invariant: all returned strings have gone through pii_mask
@@ -86,17 +91,19 @@ class TestOutputHasNoRawPii:
 
         Simulates a scenario where the canned list had a CPF in it
         (edge case for future fixtures that might include PII in exam notes).
-        """
-        FIXTURES[sample_png_sha256] = ["CPF 111.444.777-35 Hemograma"]
 
+        NOTE (spec 0011): uses mock lookup to avoid OCR on non-image bytes.
+        """
+        canned = ["CPF 111.444.777-35 Hemograma"]
         masked = MagicMock()
         masked.masked_text = "<CPF> Hemograma"
 
-        with patch("security.pii_mask", return_value=masked):
-            from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
-            result = await extract_exams_from_image(
-                base64.b64encode(b"pii_test_image" * 10).decode()
-            )
+        with patch("ocr_mcp.fixtures.lookup", return_value=canned):
+            with patch("security.pii_mask", return_value=masked):
+                from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
+                result = await extract_exams_from_image(
+                    base64.b64encode(b"pii_test_image" * 10).decode()
+                )
 
         # Raw CPF must not appear in output
         for item in result:
@@ -106,12 +113,24 @@ class TestOutputHasNoRawPii:
     async def test_empty_fixture_still_calls_pii_mask_zero_times(
         self, sample_png_sha256: str
     ) -> None:
-        """T013: empty fixture list → pii_mask not called (no items to mask)."""
+        """T013: OCR returns empty list → pii_mask not called (no items to mask).
+
+        NOTE (spec 0011): lookup() returns None on miss; real OCR would run.
+        Mock both lookup (None → OCR path) and ocr.extract_exam_lines (→ [])
+        so we test the empty-list / pii-mask-zero-times invariant without
+        a real Tesseract binary.
+        """
         unknown_b64 = base64.b64encode(b"no_match_content_xyz" * 10).decode()
 
-        with patch("security.pii_mask") as mock_pii:
-            from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
-            result = await extract_exams_from_image(unknown_b64)
+        # Force miss then empty OCR result.
+        with patch("ocr_mcp.fixtures.lookup", return_value=None):
+            with patch(
+                "ocr_mcp.server.ocr"
+            ) as mock_ocr_module:
+                mock_ocr_module.extract_exam_lines = AsyncMock(return_value=[])
+                with patch("security.pii_mask") as mock_pii:
+                    from ocr_mcp.server import extract_exams_from_image  # noqa: PLC0415
+                    result = await extract_exams_from_image(unknown_b64)
 
         assert result == []
         mock_pii.assert_not_called()

@@ -88,21 +88,28 @@ def _sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def lookup(image_base64: str) -> list[str]:
-    """Return the canned exam list for a known image hash, or [] for unknown.
+def lookup(image_base64: str) -> list[str] | None:
+    """Return the canned exam list for a known image hash, or None for unknown.
 
-    This is a **pure lookup** — it does NOT call pii_mask.
-    Callers (server.py) are responsible for applying pii_mask on the result.
+    Fast-path cache for the canonical fixture. Callers (server.py) must delegate
+    to real OCR when this returns None. This is a **pure lookup** — it does NOT
+    call pii_mask. Callers are responsible for applying pii_mask on the result.
 
     Pre:
-        image_base64 is a valid base64 string (already decoded by the caller).
+        image_base64 is a valid base64 string (RFC 4648, already decoded by caller).
+
+    Post:
+        Hit: returns a copy of the canonical exam list (mutation-safe).
+        Miss: returns None (signals "delegate to real OCR").
+
+    Invariant:
+        FIXTURES is populated lazily via _ensure_fixture_registered().
 
     Args:
         image_base64: Base64-encoded image bytes (RFC 4648, may include padding).
 
     Returns:
-        List of exam name strings for known hashes; empty list for unknowns.
-        Returns the actual fixture list — caller should copy if mutation is needed.
+        Copy of canonical exam list for known hashes; None for unknown hashes.
 
     Raises:
         base64.binascii.Error: If image_base64 is not valid base64 (caller should catch).
@@ -110,7 +117,10 @@ def lookup(image_base64: str) -> list[str]:
     _ensure_fixture_registered()
     decoded = base64.b64decode(image_base64, validate=True)
     digest = _sha256_hex(decoded)
-    return list(FIXTURES.get(digest, []))
+    entry = FIXTURES.get(digest)
+    if entry is None:
+        return None
+    return list(entry)
 
 
 def register_fixture(image_path: str) -> str:
