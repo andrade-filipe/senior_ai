@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import os
 import time
 
 from mcp.server.fastmcp import FastMCP
@@ -34,8 +35,9 @@ from ocr_mcp.fixtures import lookup
 from ocr_mcp.logging_ import get_logger
 
 # Guardrail caps (ADR-0008 § Guardrails de tamanho)
-_IMAGE_MAX_BYTES = 5 * 1024 * 1024  # 5 MB decoded
-_OCR_TIMEOUT_S = 5.0  # AC17
+_IMAGE_MAX_BYTES = int(os.environ.get("OCR_IMAGE_MAX_BYTES", str(5 * 1024 * 1024)))  # 5 MB decoded
+_OCR_TIMEOUT_S = float(os.environ.get("OCR_TIMEOUT_SECONDS", "5"))  # AC17
+_DEFAULT_LANGUAGE = os.environ.get("OCR_DEFAULT_LANGUAGE", "pt")
 
 logger = get_logger("ocr-mcp")
 
@@ -86,7 +88,7 @@ async def _do_ocr(image_base64: str) -> list[str]:
     # preempt it. Without this, a stuck pool call would not honor AC17.
     masked_names: list[str] = []
     for name in names:
-        result = await asyncio.to_thread(pii_mask, name, language="pt")
+        result = await asyncio.to_thread(pii_mask, name, language=_DEFAULT_LANGUAGE)
         masked_names.append(result.masked_text)
 
     # When list is empty apply pii_mask to empty string to satisfy AC3:

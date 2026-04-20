@@ -21,6 +21,7 @@ Guardrails (ADR-0008):
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from pathlib import Path
 
@@ -33,8 +34,12 @@ from rag_mcp.logging_ import get_logger
 from rag_mcp.models import ExamEntry, ExamMatch, ExamSummary
 
 # Guardrail caps (ADR-0008)
-_QUERY_MAX_CHARS = 500  # AC18
-_SEARCH_TIMEOUT_S = 2.0  # AC21
+_QUERY_MAX_CHARS = int(os.environ.get("RAG_QUERY_MAX_CHARS", "500"))  # AC18
+_SEARCH_TIMEOUT_S = float(os.environ.get("RAG_SEARCH_TIMEOUT_SECONDS", "2"))  # AC21
+_CATALOG_PATH = os.environ.get(
+    "RAG_CATALOG_PATH",
+    str(Path(__file__).parent / "data" / "exams.csv"),
+)
 
 logger = get_logger("rag-mcp")
 
@@ -67,7 +72,7 @@ def load_catalog(path: Path | None = None) -> None:
     global _entries, _choices, _mapping  # noqa: PLW0603
 
     if path is None:
-        path = Path(__file__).parent / "data" / "exams.csv"
+        path = Path(_CATALOG_PATH)
 
     logger.info(
         "catalog.loading",

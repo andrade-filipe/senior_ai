@@ -17,6 +17,7 @@ Design by Contract:
 from __future__ import annotations
 
 import csv
+import os
 from pathlib import Path
 from typing import Any, Sequence
 
@@ -27,7 +28,7 @@ from rag_mcp.models import ExamEntry, ExamMatch
 _REQUIRED_COLUMNS = ("name", "code", "category", "aliases")
 
 # Fuzzy match threshold (ADR-0007): rapidfuzz scale 0–100
-THRESHOLD = 80
+THRESHOLD = int(os.environ.get("RAG_FUZZY_THRESHOLD", "80"))
 
 
 def load(path: Path) -> list[ExamEntry]:

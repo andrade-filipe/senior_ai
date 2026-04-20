@@ -13,6 +13,7 @@ correlation_id} — never ``{"detail": ...}`` (AC16).
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -36,7 +37,9 @@ from .routes.health import router as health_router
 # Body size limit middleware (AC10)
 # ---------------------------------------------------------------------------
 
-BODY_SIZE_LIMIT_BYTES: int = 256 * 1024  # 256 KB
+BODY_SIZE_LIMIT_BYTES: int = int(
+    os.environ.get("SCHEDULING_BODY_SIZE_LIMIT_BYTES", str(256 * 1024))
+)  # default 256 KB; override via env
 
 
 class BodySizeLimitMiddleware(BaseHTTPMiddleware):
@@ -69,7 +72,7 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
                     code=E_API_PAYLOAD_TOO_LARGE,
                     message=f"Body excede o limite de {self.max_bytes // 1024} KB",
                     correlation_id=cid,
-                    hint="Reduza o tamanho do payload. Limite: 256 KB.",
+                    hint=f"Reduza o tamanho do payload. Limite: {self.max_bytes // 1024} KB.",
                     context={"received_bytes": size, "max_bytes": self.max_bytes},
                 )
                 return JSONResponse(
@@ -84,7 +87,9 @@ class BodySizeLimitMiddleware(BaseHTTPMiddleware):
 # Timeout middleware (AC15)
 # ---------------------------------------------------------------------------
 
-REQUEST_TIMEOUT_SECONDS: float = 10.0
+REQUEST_TIMEOUT_SECONDS: float = float(
+    os.environ.get("SCHEDULING_REQUEST_TIMEOUT_SECONDS", "10")
+)  # default 10 s; override via env
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
