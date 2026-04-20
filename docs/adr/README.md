@@ -11,10 +11,11 @@ Registros de decisões arquiteturais aceitas ao longo do desenvolvimento. ADRs s
 | [0003](0003-pii-double-layer.md) | PII mascarada em dupla camada (OCR + `before_model_callback`) | accepted | 2026-04-18 |
 | [0004](0004-sdd-tdd-workflow.md) | Workflow SDD + TDD pragmático | accepted | 2026-04-18 |
 | [0005](0005-dev-stack.md) | Stack de desenvolvimento (uv + Gemini + GitHub Actions) | accepted | 2026-04-18 |
-| [0006](0006-spec-schema-and-agent-topology.md) | Schema do JSON spec + topologia do agente gerado | accepted *(parcialmente superseded por ADR-0009 no escopo do campo `model`)* | 2026-04-18 |
+| [0006](0006-spec-schema-and-agent-topology.md) | Schema do JSON spec + topologia do agente gerado | accepted *(parcialmente superseded por ADR-0009 no escopo do campo `model`; parcialmente superseded por ADR-0010 no escopo de tool call com argumento derivado de payload binário)* | 2026-04-18 |
 | [0007](0007-rag-fuzzy-and-catalog.md) | RAG MCP via rapidfuzz + catálogo CSV | accepted | 2026-04-18 |
 | [0008](0008-robust-validation-policy.md) | Robustez de validação — taxonomia de erros, guardrails e shape de resposta | accepted | 2026-04-18 |
 | [0009](0009-runtime-config-via-env.md) | Configuração de runtime via variáveis de ambiente | accepted | 2026-04-20 |
+| [0010](0010-preocr-invocation-pattern.md) | Pré-OCR invocado pelo CLI (CLI-orchestrated pre-step) | accepted | 2026-04-20 |
 
 ## Quando abrir uma ADR
 
