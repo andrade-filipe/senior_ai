@@ -113,6 +113,9 @@ services:
       GEMINI_MODEL: "${GEMINI_MODEL:-gemini-2.5-flash-lite}"
       AGENT_TIMEOUT_SECONDS: "${AGENT_TIMEOUT_SECONDS:-300}"
       SCHEDULING_OPENAPI_FETCH_TIMEOUT_SECONDS: "${SCHEDULING_OPENAPI_FETCH_TIMEOUT_SECONDS:-10}"
+      # CLI-orchestrated pre-OCR tunables (ADR-0010 / spec 0010)
+      PREOCR_MCP_TIMEOUT_SECONDS: "${PREOCR_MCP_TIMEOUT_SECONDS:-10}"
+      PREOCR_MCP_CONNECT_RETRIES: "${PREOCR_MCP_CONNECT_RETRIES:-1}"
       # Compose DNS names override any localhost values from .env (AC10)
       OCR_MCP_URL: "${OCR_MCP_URL:-http://ocr-mcp:8001/sse}"
       RAG_MCP_URL: "${RAG_MCP_URL:-http://rag-mcp:8002/sse}"

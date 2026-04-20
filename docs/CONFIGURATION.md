@@ -32,7 +32,9 @@ cp .env.example .env
 | `GEMINI_MODEL` | `gemini-2.5-flash-lite` | Modelo Gemini consumido pelo agente. Valores aceitos pelo schema do transpilador: `gemini-2.5-flash`, `gemini-2.5-flash-lite`. Mais detalhes em § 3. | `generated_agent/agent.py` |
 | `AGENT_TIMEOUT_SECONDS` | `300` | Timeout total da execução do agente (wall-clock, em segundos). | `generated_agent/__main__.py` |
 | `SCHEDULING_OPENAPI_FETCH_TIMEOUT_SECONDS` | `10` | Timeout HTTP do agente quando baixa o `openapi.json` da `scheduling-api` no boot. | `generated_agent/agent.py` |
-| `OCR_MCP_URL` | `http://ocr-mcp:8001/sse` | URL SSE do OCR MCP. Use sempre o DNS do compose — `localhost` não funciona dentro do container. | `generated_agent/agent.py` |
+| `PREOCR_MCP_TIMEOUT_SECONDS` | `10` | Timeout wall-clock do pré-OCR orquestrado pelo CLI (connect + `initialize` + `call_tool`). Na estourada: aborta com `E_OCR_UNKNOWN_IMAGE` (exit 4). ADR-0010 / spec 0010. | `generated_agent/preocr.py` |
+| `PREOCR_MCP_CONNECT_RETRIES` | `1` | Número de retries em erros de transporte do pré-OCR antes de abortar com `E_MCP_UNAVAILABLE` (exit 5). Não reinicia em timeout. ADR-0010. | `generated_agent/preocr.py` |
+| `OCR_MCP_URL` | `http://ocr-mcp:8001/sse` | URL SSE do OCR MCP. Use sempre o DNS do compose — `localhost` não funciona dentro do container. Também consumido pela etapa de pré-OCR da CLI. | `generated_agent/agent.py` |
 | `RAG_MCP_URL` | `http://rag-mcp:8002/sse` | URL SSE do RAG MCP. Idem. | `generated_agent/agent.py` |
 | `SCHEDULING_OPENAPI_URL` | `http://scheduling-api:8000/openapi.json` | URL do OpenAPI consumido pelo OpenAPIToolset do ADK. | `generated_agent/agent.py` |
 | `LOG_LEVEL` | `INFO` | Nível de log Python (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). | todos |
