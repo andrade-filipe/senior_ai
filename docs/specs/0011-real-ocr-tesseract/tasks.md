@@ -1,6 +1,6 @@
 ---
 id: 0011-real-ocr-tesseract
-status: todo
+status: in_progress
 ---
 
 ## Setup

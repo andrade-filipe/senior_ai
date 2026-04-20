@@ -1,8 +1,8 @@
 # ADR-0011: OCR real via Tesseract (fast-path de hash preservado como cache)
 
-- **Status**: proposed
+- **Status**: accepted
 - **Data**: 2026-04-20
-- **Autor(es)**: software-architect (proposta) + Filipe Andrade (aprovação pendente — checkpoint #1)
+- **Autor(es)**: software-architect (proposta) + Filipe Andrade (aprovação — checkpoint #1 em 2026-04-20)
 
 ## Contexto
 
