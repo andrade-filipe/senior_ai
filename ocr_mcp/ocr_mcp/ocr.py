@@ -37,17 +37,25 @@ ExamLine: TypeAlias = str  # post-filtered; NOT post-pii-mask (server does that)
 # Filter constants (plan.md § Data models)
 # ---------------------------------------------------------------------------
 
-_MIN_LINE_LEN: int = 3
+_MIN_LINE_LEN: int = 5
 _MAX_LINE_LEN: int = 120
 _MAX_LINES: int = 64
 
-# Regex for header lines to drop (case-insensitive prefix match).
-# Pattern matches any of these keywords followed by optional whitespace + colon/：.
+# Short uppercase medical acronyms (TSH, HDL, PSA, T3, T4, CPK...) are legit
+# exam names despite being under _MIN_LINE_LEN. Keep them via this exemption.
+_ACRONYM_RE = re.compile(r"^[A-Z][A-Z0-9]{1,3}(?:-\d+)?$")
+
+# Drop lines whose leading token is a known document header or field label,
+# with or without a trailing colon. Expanded 2026-04-20 after real E2E on
+# sample_medical_order.png surfaced PEDIDOMEDICO / CPF / Exames Solicitados.
 _HEADER_RE = re.compile(
     r"^(?:"
-    r"paciente|data|m[eé]dico|crm|conv[eê]nio|endere[cç]o"
+    r"paciente|data(?:\s+de\s+nascimento)?|m[eé]dico|crm|conv[eê]nio|endere[cç]o"
     r"|telefone|fone|idade|cpf|rg|cl[ií]nica"
-    r")\s*[:：]",
+    r"|pedido(?:\s*m[eé]dic[oa])?|pedidomedico"
+    r"|exames?\s+solicitados?|solicita[cç][aã]o"
+    r"|receita|ordem\s+m[eé]dica"
+    r")(?:\s*[:：]|\s+|\.|$)",
     re.IGNORECASE,
 )
 
@@ -100,8 +108,9 @@ def _filter_lines(raw_text: str) -> list[ExamLine]:
         if not line:
             continue
 
-        # Drop lines shorter than minimum
-        if len(line) < _MIN_LINE_LEN:
+        # Drop lines shorter than minimum, but keep legit medical acronyms
+        # (TSH, HDL, PSA, T3...) that are naturally 3–4 uppercase chars.
+        if len(line) < _MIN_LINE_LEN and not _ACRONYM_RE.match(line):
             continue
 
         # Drop lines longer than maximum (noise artifacts)
@@ -201,10 +210,16 @@ async def extract_exam_lines(
 
     result = _filter_lines(raw_text)
 
-    # DbC invariant — assert post-condition
-    assert all(_MIN_LINE_LEN <= len(x) <= _MAX_LINE_LEN for x in result), (
+    # DbC invariant — assert post-condition.
+    # Each line is either a medical acronym (3–4 uppercase chars) or within
+    # [_MIN_LINE_LEN, _MAX_LINE_LEN]. Upper bound always applies.
+    assert all(
+        len(x) <= _MAX_LINE_LEN
+        and (_ACRONYM_RE.match(x) or _MIN_LINE_LEN <= len(x))
+        for x in result
+    ), (
         f"ocr.extract_exam_lines post-condition violated: "
-        f"some lines outside [{_MIN_LINE_LEN}, {_MAX_LINE_LEN}] chars"
+        f"non-acronym lines must be within [{_MIN_LINE_LEN}, {_MAX_LINE_LEN}] chars"
     )
 
     return result

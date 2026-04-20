@@ -133,11 +133,11 @@ class TestFilterHeuristics:
     pytesseract.image_to_string so the real binary is never invoked.
 
     The expected output for input:
-        "Paciente: João\\nHemograma Completo\\n  \\nCPF: 111\\nEcg"
+        "Paciente: João\\nHemograma Completo\\n  \\nCPF: 111\\nECG"
     is:
-        ["Hemograma Completo", "Ecg"]
+        ["Hemograma Completo", "ECG"]
 
-    "Ecg" has 3 chars — exactly at _MIN_LINE_LEN — must be kept.
+    "ECG" has 3 chars — exempt as uppercase medical acronym.
     "Paciente:" and "CPF:" are header prefixes — must be dropped.
     "  " (whitespace only) — must be dropped.
     AC2, AC4.
@@ -145,15 +145,15 @@ class TestFilterHeuristics:
 
     @pytest.mark.asyncio
     async def test_filter_heuristics(self) -> None:
-        """T015: header prefixes and blank lines are excluded; 3-char lines kept.
+        """T015: header prefixes and blank lines are excluded; acronyms kept.
 
         Pre:  pytesseract.image_to_string is mocked to return known multi-line text.
         Post: headers (Paciente:, CPF:) and whitespace lines absent from result;
-              "Hemograma Completo" and "Ecg" present.
+              "Hemograma Completo" and "ECG" (uppercase acronym) present.
         """
         from ocr_mcp import ocr  # noqa: PLC0415 — module doesn't exist → RED
 
-        raw_text = "Paciente: João\nHemograma Completo\n  \nCPF: 111\nEcg"
+        raw_text = "Paciente: João\nHemograma Completo\n  \nCPF: 111\nECG"
 
         # Provide minimal valid PNG bytes (1×1 white pixel) as image input.
         from PIL import Image  # noqa: PLC0415
@@ -169,7 +169,7 @@ class TestFilterHeuristics:
         assert "Hemograma Completo" in result, (
             f"'Hemograma Completo' must be in result; got {result}"
         )
-        assert "Ecg" in result, f"'Ecg' (3 chars, valid) must be in result; got {result}"
+        assert "ECG" in result, f"'ECG' (uppercase acronym) must be in result; got {result}"
 
         # Header lines must be absent
         for item in result:
@@ -183,3 +183,93 @@ class TestFilterHeuristics:
         # Whitespace-only lines absent
         for item in result:
             assert item.strip() != "", "Whitespace-only lines must be filtered"
+
+
+# ---------------------------------------------------------------------------
+# Real-world E2E noise cases observed 2026-04-20 with sample_medical_order.png
+# ---------------------------------------------------------------------------
+
+
+class TestFilterRealWorldNoise:
+    """Regression: heuristics must drop document-header noise observed in E2E.
+
+    Real Tesseract output from sample_medical_order.png 2026-04-20:
+        PEDIDOMEDICO            -> header (no colon, merged by OCR)
+        CPF ITIAda 7775         -> field label (no colon, garbage value)
+        Exames Solicitados.     -> section title (period, no colon)
+        1 Hemegrama Completo    -> exam line WITH OCR typo (keep)
+        2 Glicemiado Jejum      -> exam line WITH OCR merge (keep)
+        a Colesterol Total      -> exam line WITH bad digit OCR (keep)
+        atu                     -> 3-char lowercase fragment (drop)
+        <LOCATION>              -> PII-masked token (keep — server layer)
+    """
+
+    @pytest.mark.asyncio
+    async def test_filter_drops_real_world_document_headers(self) -> None:
+        from ocr_mcp import ocr  # noqa: PLC0415
+
+        from PIL import Image  # noqa: PLC0415
+
+        img = Image.new("RGB", (10, 10), "white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+
+        raw_text = (
+            "PEDIDOMEDICO\n"
+            "CPF ITIAda 7775\n"
+            "Exames Solicitados.\n"
+            "1 Hemegrama Completo\n"
+            "2 Glicemiado Jejum\n"
+            "a Colesterol Total\n"
+            "atu\n"
+        )
+
+        with patch("pytesseract.image_to_string", return_value=raw_text):
+            result = await ocr.extract_exam_lines(png_bytes, lang="por", timeout_s=5.0)
+
+        # Document-header noise must be filtered out
+        joined = " | ".join(result).lower()
+        assert "pedidomedico" not in joined, f"'PEDIDOMEDICO' header leaked: {result}"
+        assert "cpf " not in joined, f"'CPF ...' field label leaked: {result}"
+        assert "exames solicitados" not in joined, (
+            f"'Exames Solicitados' section title leaked: {result}"
+        )
+        assert "atu" not in result, f"'atu' 3-char fragment leaked: {result}"
+
+        # Genuine exam lines (with OCR typos) must survive — RAG handles typos
+        assert any("Hemegrama" in line or "Hemograma" in line for line in result), (
+            f"exam line with 'Hemegrama/Hemograma' missing: {result}"
+        )
+        assert any("Glicemia" in line for line in result), (
+            f"exam line with 'Glicemia' missing: {result}"
+        )
+        assert any("Colesterol" in line for line in result), (
+            f"exam line with 'Colesterol' missing: {result}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_filter_keeps_short_medical_acronyms(self) -> None:
+        """Short uppercase acronyms (TSH, HDL, PSA) are legit exam names and must survive.
+
+        Bumping the minimum length unconditionally would kill them; the filter
+        exempts uppercase acronyms.
+        """
+        from ocr_mcp import ocr  # noqa: PLC0415
+
+        from PIL import Image  # noqa: PLC0415
+
+        img = Image.new("RGB", (10, 10), "white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        png_bytes = buf.getvalue()
+
+        raw_text = "TSH\nHDL\nPSA\nT3\natu\nvxy\n"
+
+        with patch("pytesseract.image_to_string", return_value=raw_text):
+            result = await ocr.extract_exam_lines(png_bytes, lang="por", timeout_s=5.0)
+
+        for acronym in ("TSH", "HDL", "PSA", "T3"):
+            assert acronym in result, f"Acronym '{acronym}' must survive: {result}"
+        assert "atu" not in result, "lowercase noise 'atu' must drop"
+        assert "vxy" not in result, "lowercase noise 'vxy' must drop"
