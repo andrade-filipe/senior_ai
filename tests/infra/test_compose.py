@@ -131,6 +131,15 @@ class TestAC10AgentEnv:
         )
         env_dict = {k: str(v) for k, v in env.items()}
 
+        # ADR-0009 (K1): compose now uses ${VAR:-default} interpolation so yaml.safe_load
+        # returns the template string rather than the resolved value.  We extract the
+        # default portion (after ':-') to validate the compose-DNS names are correct.
+        def _extract_default(template: str) -> str:
+            """Return the default from a ${VAR:-default} template, or the value as-is."""
+            import re as _re
+            m = _re.match(r"^\$\{[^:]+:-(.+)\}$", template)
+            return m.group(1) if m else template
+
         expected = {
             "OCR_MCP_URL": "http://ocr-mcp:8001/sse",
             "RAG_MCP_URL": "http://rag-mcp:8002/sse",
@@ -140,9 +149,11 @@ class TestAC10AgentEnv:
             assert var in env_dict, (
                 f"[AC10] generated-agent environment must declare {var}."
             )
-            actual_val = env_dict[var]
+            actual_raw = env_dict[var]
+            actual_val = _extract_default(actual_raw)
             assert actual_val == expected_val, (
-                f"[AC10] {var} must be {expected_val!r}; found {actual_val!r}. "
+                f"[AC10] {var} default must be {expected_val!r}; "
+                f"found raw value {actual_raw!r} (resolved default: {actual_val!r}). "
                 "Use compose DNS names, not localhost."
             )
 

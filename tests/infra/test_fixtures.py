@@ -108,8 +108,8 @@ class TestSpecExampleSchemaValidation:
 
         # Sanity assertions on the parsed spec
         assert spec.name, "[AC8] AgentSpec.name must be non-empty."
-        assert spec.model == "gemini-2.5-flash", (
-            f"[AC8] Expected model='gemini-2.5-flash'; got {spec.model!r}."
+        assert spec.model in {"gemini-2.5-flash", "gemini-2.5-flash-lite"}, (
+            f"[AC8/ADR-0009] Expected model in allowlist; got {spec.model!r}."
         )
         assert len(spec.mcp_servers) >= 1, (
             "[AC8] spec.example.json must declare at least one MCP server."

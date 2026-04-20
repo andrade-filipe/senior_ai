@@ -145,11 +145,29 @@ class TestSpacyModelBakedForPii:
     @pytest.mark.parametrize("service", sorted(SPACY_REQUIRED))
     def test_spacy_model_baked(self, service: str) -> None:
         content = _read(DOCKERFILES[service])
-        assert "python -m spacy download pt_core_news_lg" in content, (
-            f"[ADR-0003] {service}/Dockerfile must run "
-            "`python -m spacy download pt_core_news_lg` at build time; "
-            "runtime download would trip the 5 s PII guard timeout."
+        # ADR-0009 (K2): Dockerfiles now use ARG PII_SPACY_MODEL_PT=pt_core_news_lg
+        # so the model can be swapped at build time via docker-compose build.args.
+        # Accept either the legacy literal form OR the new ARG-backed form.
+        literal_form = "python -m spacy download pt_core_news_lg" in content
+        arg_form = (
+            "ARG PII_SPACY_MODEL_PT" in content
+            and "python -m spacy download $PII_SPACY_MODEL_PT" in content
         )
+        assert literal_form or arg_form, (
+            f"[ADR-0003] {service}/Dockerfile must bake the spaCy model at build time. "
+            "Expected either:\n"
+            "  (legacy)  RUN python -m spacy download pt_core_news_lg\n"
+            "  (ADR-0009) ARG PII_SPACY_MODEL_PT=pt_core_news_lg + "
+            "RUN python -m spacy download $PII_SPACY_MODEL_PT\n"
+            "Runtime download would trip the 5 s PII guard timeout."
+        )
+        # The ARG must declare pt_core_news_lg as default so an operator who
+        # does NOT override it still gets a working image out-of-the-box.
+        if arg_form and not literal_form:
+            assert "ARG PII_SPACY_MODEL_PT=pt_core_news_lg" in content, (
+                f"[ADR-0003] {service}/Dockerfile ARG PII_SPACY_MODEL_PT must default "
+                "to pt_core_news_lg so the image works without an explicit build arg."
+            )
 
     def test_rag_mcp_does_not_need_spacy(self) -> None:
         """rag_mcp does not run Presidio — guard against unnecessary image bloat."""
