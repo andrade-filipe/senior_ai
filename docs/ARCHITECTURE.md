@@ -327,6 +327,8 @@ Tabela-mestre `E_*`. Reuso proibido. Novo código exige PR que atualize esta tab
 | `E_API_INTERNAL` | scheduling_api | Erro interno não classificado (catch-all 500, `HTTPException` não-422 sem código domínio) | "Erro interno do servidor" | "Verifique os logs do serviço" |
 | `E_MCP_TIMEOUT` | generated_agent | MCP tool call > timeout do serviço (ver tabela Timeouts) | "MCP `<server>` não respondeu no timeout" | "Verifique se o serviço subiu (`docker compose ps`)" |
 | `E_MCP_TOOL_NOT_FOUND` | generated_agent | Tool inexistente no servidor | "Tool `<name>` não existe em `<server>`" | "Verifique `tool_filter` no spec" |
+| `E_MCP_UNAVAILABLE` | generated_agent | Pré-OCR CLI não conseguiu abrir conexão SSE com `ocr-mcp` após `PREOCR_MCP_CONNECT_RETRIES` tentativas. Exit code 5. ADR-0010. | "OCR MCP indisponível após `<N>` tentativa(s)" | "Verifique se `ocr-mcp` está saudável (`docker compose ps`)" |
+| `E_OCR_UNKNOWN_IMAGE` | generated_agent | Pré-OCR CLI retornou lista de exames vazia (ou timeout do pré-OCR). Exit code 4. ADR-0010. | "OCR pré-executado não reconheceu a imagem" | "Verifique se a imagem tem um pedido médico legível; registre-a em `ocr_mcp/fixtures.py` se for nova" |
 | `E_AGENT_TIMEOUT` | generated_agent | Execução total do agente > 300 s | "Agente excedeu 300 s" | "Inspecione logs; reinicie stack" |
 | `E_AGENT_INPUT_NOT_FOUND` | generated_agent | 1 (CLI) | "Arquivo de entrada não encontrado" | "Verifique o caminho do --image" | input validation at CLI boot |
 | `E_AGENT_OUTPUT_INVALID` | generated_agent | LLM retorna resposta não-estruturada após a tabela ASCII esperada | "Saída do agente não conforme esperado" | "Revise `instruction`; inspecione `response_id` nos logs" |

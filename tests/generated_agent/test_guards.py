@@ -208,7 +208,7 @@ def test_run_agent_closes_toolsets_on_timeout() -> None:
             with patch("google.adk.sessions.InMemorySessionService", _FakeSessionService):
                 async def _run_with_short_timeout() -> None:
                     await _asyncio.wait_for(
-                        runner_mod._run_agent(b"fakebytes", "cid-timeout"),
+                        runner_mod._run_agent(["Hemograma"], "cid-timeout"),
                         timeout=0.1,
                     )
 

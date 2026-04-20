@@ -20,9 +20,17 @@ def test_ocr_tool_not_in_agent_tools() -> None:
           "extract_exams_from_image" name in its tool_filter.
     """
     # Avoid real httpx.get of the scheduling spec during module import.
-    with patch(
-        "generated_agent.agent._load_scheduling_toolset",
-        return_value=None,
+    # Also stub make_pii_callback to avoid spinning up a Presidio analyzer
+    # that would pollute shared state for later PII tests in the same run.
+    with (
+        patch(
+            "generated_agent.agent._load_scheduling_toolset",
+            return_value=None,
+        ),
+        patch(
+            "generated_agent.agent.make_pii_callback",
+            return_value=lambda *_a, **_k: None,
+        ),
     ):
         from generated_agent.agent import _build_agent  # noqa: PLC0415
 
