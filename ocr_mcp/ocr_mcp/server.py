@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import hashlib
 import os
 import time
 
@@ -173,6 +174,22 @@ async def extract_exams_from_image(image_base64: str) -> list[str]:
         )
         _raise_tool_error(err)
         return []  # unreachable
+
+    # Spec 0009 T041: instrument digest of the decoded payload the MCP tool
+    # actually received. Compared with the on-disk fixture hash during E2E
+    # triage, this distinguishes "agent re-encoded the image" from "agent
+    # passed the raw bytestream" as the cause of lookup misses.
+    digest = hashlib.sha256(decoded).hexdigest()
+    logger.info(
+        "ocr.lookup.hash",
+        extra={
+            "event": "ocr.lookup.hash",
+            "tool": "extract_exams_from_image",
+            "sha256": digest,
+            "sha256_prefix": digest[:12],
+            "payload_bytes": byte_size,
+        },
+    )
 
     # Timeout wrapper (AC17) — asyncio.wait_for is sufficient for pure Python lookup
     # (no blocking I/O); multiprocessing.Pool would be overkill here.
