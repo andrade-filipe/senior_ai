@@ -7,14 +7,15 @@ import asyncio
 import json
 import logging
 import os
+import re
 import sys
 import typing
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any, Literal
 
 import pydantic
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from generated_agent.logging_ import configure_logging
 from generated_agent.preocr import _build_preocr_prompt, _PreOcrError, _run_preocr
@@ -26,9 +27,10 @@ _PREOCR_MCP_TIMEOUT = float(os.environ.get("PREOCR_MCP_TIMEOUT_SECONDS", "10")) 
 _PREOCR_MCP_CONNECT_RETRIES = int(os.environ.get("PREOCR_MCP_CONNECT_RETRIES", "1"))
 _OCR_MCP_URL = os.environ.get("OCR_MCP_URL", "http://ocr-mcp:8001/sse")
 
-# Error code constants (MAJOR-3 + spec 0010)
+# Error code constants (MAJOR-3 + spec 0010 + spec 0009 Camada B)
 _E_AGENT_INPUT_NOT_FOUND = "E_AGENT_INPUT_NOT_FOUND"
 _E_AGENT_OUTPUT_INVALID = "E_AGENT_OUTPUT_INVALID"
+_E_AGENT_OUTPUT_REPORTED_ERROR = "E_AGENT_OUTPUT_REPORTED_ERROR"
 _E_AGENT_TIMEOUT = "E_AGENT_TIMEOUT"
 _E_OCR_UNKNOWN_IMAGE = "E_OCR_UNKNOWN_IMAGE"
 _E_MCP_UNAVAILABLE = "E_MCP_UNAVAILABLE"
@@ -57,12 +59,63 @@ class ExamResolution(BaseModel):
         return v
 
 
-class _RunnerOutput(BaseModel):
-    """Expected structure of the agent's final output (AC19)."""
+class RunnerSuccess(BaseModel):
+    """Canonical success envelope (spec 0009 Camada B / AC3)."""
 
+    status: Literal["success"] = "success"
     exams: list[ExamResolution]
     appointment_id: str
     scheduled_for: datetime
+
+
+class RunnerErrorDetail(BaseModel):
+    """Inner error payload of RunnerError (spec 0009 Camada B)."""
+
+    code: str
+    message: str
+    hint: str | None = None
+
+
+class RunnerError(BaseModel):
+    """Canonical error envelope (spec 0009 Camada B / AC4)."""
+
+    status: Literal["error"] = "error"
+    error: RunnerErrorDetail
+
+
+RunnerResult = Annotated[
+    RunnerSuccess | RunnerError,
+    Field(discriminator="status"),
+]
+
+RunnerResultAdapter: TypeAdapter[RunnerSuccess | RunnerError] = TypeAdapter(RunnerResult)
+
+
+_FENCE_PATTERN = re.compile(
+    r"^\s*(?:[^`{]*?)```(?:json|JSON)?\s*(\{.*\})\s*```\s*$",
+    re.DOTALL,
+)
+
+
+def _strip_json_fence(raw: str) -> str:
+    """Remove markdown code fences around a JSON object.
+
+    Known Gemini 2.5 Pro drift (~30% of responses with structured schemas): the
+    model wraps the final JSON in ```json ... ``` despite instructions. This
+    helper is deliberately conservative — if no fence is detected, the input is
+    returned unchanged so the caller's json.loads still raises a sensible
+    JSONDecodeError on genuinely malformed payloads.
+
+    Args:
+        raw: Raw text from the agent's final response.
+
+    Returns:
+        The inner JSON string if a fence is detected, otherwise raw unchanged.
+    """
+    match = _FENCE_PATTERN.match(raw)
+    if match is not None:
+        return match.group(1)
+    return raw
 
 
 # ---------------------------------------------------------------------------
@@ -263,20 +316,29 @@ async def _run_agent(exams: list[str], correlation_id: str) -> Any:
     return final_response
 
 
-def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
-    """Parse and validate runner output against the expected schema.
+def _parse_runner_output(raw: Any, correlation_id: str) -> RunnerSuccess:
+    """Parse and validate runner output against the RunnerResult union.
+
+    Dispatches the raw event through three branches (spec 0009 Camada B):
+      - RunnerSuccess -> returned for the caller to format as ASCII table
+      - RunnerError   -> SystemExit(4) with the envelope on stderr (AC4)
+      - malformed     -> SystemExit(3) with E_AGENT_OUTPUT_INVALID (AC6)
+
+    A markdown fence wrapper (``` ```json ```) is tolerated via
+    _strip_json_fence before json.loads — mitigates the gemini-2.5-pro drift
+    documented in the 2026-04-21 addendum.
 
     Args:
-        raw: Raw runner result (Event or dict or string).
-        correlation_id: For logging.
+        raw: Raw runner result (ADK Event, dict, or string).
+        correlation_id: UUID for logging and envelope traceability.
 
     Returns:
-        Validated _RunnerOutput instance.
+        Validated RunnerSuccess (RunnerError branches exit the process).
 
     Raises:
-        SystemExit(3): when JSON or Pydantic validation fails (AC19).
+        SystemExit(3): JSON/Pydantic validation failed.
+        SystemExit(4): agent reported a structured error envelope.
     """
-    # Extract text from ADK Event (MINOR-8: docstring updated)
     text: str = ""
     if hasattr(raw, "content") and hasattr(raw.content, "parts"):
         for part in raw.content.parts:
@@ -287,10 +349,11 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
     else:
         text = str(raw) if raw is not None else ""
 
-    # MAJOR-2: narrow exception catch — only JSON/Pydantic failures are expected
+    stripped = _strip_json_fence(text)
+
     try:
-        data = json.loads(text)
-        output = _RunnerOutput.model_validate(data)
+        data = json.loads(stripped)
+        result = RunnerResultAdapter.validate_python(data)
     except (json.JSONDecodeError, pydantic.ValidationError) as exc:
         _LOGGER.error(
             "agent.output.invalid",
@@ -304,11 +367,28 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
             code=_E_AGENT_OUTPUT_INVALID,
             message="Saida do agente nao corresponde ao schema esperado.",
             correlation_id=correlation_id,
-            hint="Verifique se o agente retornou JSON valido com campos exams[], appointment_id, scheduled_for.",
+            hint="Verifique se o agente retornou JSON valido com status='success' ou status='error'.",
             exit_code=3,
         )
 
-    return output
+    if isinstance(result, RunnerError):
+        _LOGGER.error(
+            "agent.output.reported_error",
+            extra={
+                "event": "agent.output.reported_error",
+                "correlation_id": correlation_id,
+                "agent_error_code": result.error.code,
+            },
+        )
+        _exit_error(
+            code=_E_AGENT_OUTPUT_REPORTED_ERROR,
+            message=result.error.message,
+            correlation_id=correlation_id,
+            hint=result.error.hint,
+            exit_code=4,
+        )
+
+    return result
 
 
 # ---------------------------------------------------------------------------
