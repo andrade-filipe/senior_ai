@@ -1,5 +1,13 @@
 FROM python:3.12-slim
 
+# Tesseract OCR engine + Portuguese language pack (ADR-0011).
+# Separate cacheable layer — kept distinct from pip/uv install layer.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      tesseract-ocr \
+      tesseract-ocr-por \
+ && rm -rf /var/lib/apt/lists/*
+
 # Install uv (ADR-0005)
 RUN pip install --no-cache-dir uv
 
