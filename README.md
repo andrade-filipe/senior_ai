@@ -224,6 +224,10 @@ As decisões arquiteturais deste projeto se ancoram em documentação oficial e 
 
 Lista completa, agrupada por domínio e ancorada em cada ADR, em [`docs/REFERENCES.md`](docs/REFERENCES.md). Log bruto de toda fonte consultada durante o desenvolvimento — inclusive descobertas que não viraram código — em [`ai-context/LINKS.md`](ai-context/LINKS.md).
 
+### Configuração em runtime (ADR-0009)
+
+A superfície de configuração do sistema é documentada em [`docs/CONFIGURATION.md`](docs/CONFIGURATION.md) e formalizada na [ADR-0009](docs/adr/0009-runtime-config-via-env.md). O princípio é *"spec define o default, `.env` sobrescreve em runtime para todo parâmetro com legitimidade operacional"*: modelo Gemini, timeouts, limites de tamanho, thresholds de PII e fuzzy match, caminho do catálogo RAG e modelos spaCy são todos tunáveis sem tocar em código. Em particular, o modelo Gemini pode ser trocado editando `GEMINI_MODEL` no `.env` e rodando `docker compose up -d --force-recreate generated-agent` — capacidade motivada pelo incidente de 2026-04-20, em que o `gemini-2.5-flash` com function-calling retornou `HTTP 503` por saturação server-side do pool Google enquanto outros modelos respondiam normalmente. Calibrações Presidio por-recognizer e contratos públicos da API permanecem hardcoded, com justificativa explícita na ADR.
+
 ### Commits contam história
 
 O log de git é intencionalmente auditável: commits são pequenos, em Conventional Commits em inglês, citam o ID da task (`Txxx`) ou do critério de aceitação (`ACn`) que fecham, e são ordenados para comunicar a evolução do software — não são dumps de "work in progress". `git log --oneline` revela a trilha bloco a bloco.

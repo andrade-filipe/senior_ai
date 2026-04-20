@@ -77,7 +77,7 @@ O schema completo esta documentado em dois lugares; nao e reproduzido aqui:
 Pontos criticos para quem escreve o `spec.json`:
 
 - `name` — regex `^[a-z0-9][a-z0-9-]*$`; unico no spec.
-- `model` — valor fixo `"gemini-2.5-flash"` (outro valor provoca `E_TRANSPILER_SCHEMA`).
+- `model` — allowlist `{"gemini-2.5-flash", "gemini-2.5-flash-lite"}` (ADR-0009); outro valor provoca `E_TRANSPILER_SCHEMA`. Runtime override via `GEMINI_MODEL` no `.env` sem regerar.
 - `instruction` — maximo 4 096 bytes UTF-8.
 - `mcp_servers` / `http_tools` — pelo menos um deve ser nao-vazio; caps de 10 e 20 itens respectivamente.
 - `mcp_servers[*].name` deve ser unico dentro do spec.
@@ -172,8 +172,8 @@ Para subir a stack completa, consulte `docker-compose.yml` na raiz do repo.
 uv run python -m transpiler spec_invalido.json -o ./out
 # stderr:
 # code: E_TRANSPILER_SCHEMA
-# message: Campo `model` invalido: 'gpt-4' nao e um valor aceito. Valores permitidos: ['gemini-2.5-flash'].
-# hint: Defina `model` como 'gemini-2.5-flash'. Outros modelos exigem nova ADR (ADR-0006).
+# message: Campo `model` invalido: 'gpt-4' nao e um valor aceito. Valores permitidos: ['gemini-2.5-flash', 'gemini-2.5-flash-lite'].
+# hint: Defina `model` como 'gemini-2.5-flash' ou 'gemini-2.5-flash-lite'. Ampliar a allowlist exige nova ADR supersedendo ADR-0009.
 ```
 
 **Correcao**: revise o `spec.json` contra o schema em
@@ -229,9 +229,10 @@ uv run python -m transpiler spec.json -o /tmp/out2
 **Sintoma**: exit code `1`; `code: E_TRANSPILER_SCHEMA`; mensagem cita os
 valores permitidos.
 
-**Causa**: `model` e `Literal["gemini-2.5-flash"]`; qualquer outro valor e
-rejeitado. Trocar de modelo exige nova ADR supersedendo
-[ADR-0006](../adr/0006-spec-schema-and-agent-topology.md).
+**Causa**: `model` e `Literal["gemini-2.5-flash", "gemini-2.5-flash-lite"]`
+(ampliado por [ADR-0009](../adr/0009-runtime-config-via-env.md); ADR-0006 parcialmente
+superseded). Qualquer outro valor e rejeitado. Trocar de modelo em runtime sem
+regerar: `GEMINI_MODEL` no `.env` (ver [`CONFIGURATION.md`](../CONFIGURATION.md) § 3).
 
 ---
 

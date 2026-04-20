@@ -67,5 +67,5 @@ Cada commit cita `Txxx` da `tasks.md` do bloco.
 - [ADR-0003](../../docs/adr/0003-pii-double-layer.md) — chamar `security.pii_mask()` dentro do ocr-mcp + registrar `before_model_callback` no agente.
 - [ADR-0004](../../docs/adr/0004-sdd-tdd-workflow.md) — ciclo SDD + TDD pragmático.
 - [ADR-0005](../../docs/adr/0005-dev-stack.md) — `uv` + `pyproject.toml` próprio por serviço; Gemini via API key (`GOOGLE_API_KEY`, `GOOGLE_GENAI_USE_VERTEXAI=FALSE`).
-- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — agente gerado = `LlmAgent` único; `model: Literal["gemini-2.5-flash"]`.
+- [ADR-0006](../../docs/adr/0006-spec-schema-and-agent-topology.md) — agente gerado = `LlmAgent` único; `model: Literal["gemini-2.5-flash", "gemini-2.5-flash-lite"]` (ampliado por ADR-0009; runtime override via `GEMINI_MODEL` env).
 - [ADR-0007](../../docs/adr/0007-rag-fuzzy-and-catalog.md) — `rapidfuzz` threshold 80; catálogo em `rag_mcp/data/exams.csv` (colunas `name,code,category,aliases`).

@@ -127,17 +127,24 @@ def pii_mask(text: str, language: str = "pt") -> MaskedResult:
 
 ## Variáveis de ambiente (consolidadas)
 
-| Variável | Quem usa | Exemplo |
-|---|---|---|
-| `GOOGLE_GENAI_USE_VERTEXAI` | generated_agent | `FALSE` |
-| `GOOGLE_API_KEY` | generated_agent | `AIza...` |
-| `OCR_MCP_URL` | generated_agent | `http://ocr-mcp:8001/sse` |
-| `RAG_MCP_URL` | generated_agent | `http://rag-mcp:8002/sse` |
-| `SCHEDULING_OPENAPI_URL` | generated_agent | `http://scheduling-api:8000/openapi.json` |
-| `PII_DEFAULT_LANGUAGE` | security | `pt` |
-| `LOG_LEVEL` | todos | `INFO` |
+A superfície completa de configuração (26 variáveis de runtime + 7 do transpilador) é documentada em [`docs/CONFIGURATION.md`](CONFIGURATION.md) e formalizada pela [ADR-0009](adr/0009-runtime-config-via-env.md). O princípio é "spec define o default, `.env` sobrescreve em runtime para todo parâmetro com legitimidade operacional"; contratos públicos e calibrações Presidio por-recognizer permanecem hardcoded.
 
-Detalhes em `.env.example`.
+Tabela resumida — apenas as variáveis mais usadas no runbook:
+
+| Variável | Quem usa | Default | Observação |
+|---|---|---|---|
+| `GOOGLE_API_KEY` | generated_agent | *(sem default)* | Obrigatória. |
+| `GOOGLE_GENAI_USE_VERTEXAI` | generated_agent | `FALSE` | Gemini direct vs. Vertex. |
+| `GEMINI_MODEL` | generated_agent | `gemini-2.5-flash-lite` | Troca de modelo sem rebuild (motivador da ADR-0009 — incidente 503 de 2026-04-20). |
+| `OCR_MCP_URL` | generated_agent | `http://ocr-mcp:8001/sse` | DNS do compose; evite `localhost`. |
+| `RAG_MCP_URL` | generated_agent | `http://rag-mcp:8002/sse` | Idem. |
+| `SCHEDULING_OPENAPI_URL` | generated_agent | `http://scheduling-api:8000/openapi.json` | Idem. |
+| `RAG_FUZZY_THRESHOLD` | rag_mcp | `80` | Precisão/recall do match fuzzy. |
+| `PII_SCORE_THRESHOLD` | security | `0.5` | Dial global de FP/FN do Presidio. |
+| `PII_SPACY_MODEL_PT` | security + Dockerfiles | `pt_core_news_lg` | **Build-arg** — exige `docker compose build` para re-bake. |
+| `LOG_LEVEL` | todos | `INFO` | Observabilidade. |
+
+Tabela completa, agrupada por serviço, com impacto e arquivo fonte de cada variável, está em [`docs/CONFIGURATION.md`](CONFIGURATION.md). Superfície exata em `.env.example`.
 
 ## Schema Pydantic do JSON spec
 
@@ -172,7 +179,7 @@ class GuardrailSpec(BaseModel):
 class AgentSpec(BaseModel):
     name: str = Field(pattern=r"^[a-z0-9][a-z0-9-]*$")
     description: str
-    model: Literal["gemini-2.5-flash"]      # Literal força revisão ao trocar
+    model: Literal["gemini-2.5-flash", "gemini-2.5-flash-lite"]  # ampliado por ADR-0009; runtime override via GEMINI_MODEL env
     instruction: str                         # prompt multiline, imperativo
     mcp_servers: list[McpServerSpec]
     http_tools: list[HttpToolSpec]
@@ -185,7 +192,7 @@ Exemplo mínimo (`spec.example.json`):
 {
   "name": "medical-order-agent",
   "description": "Agente de agendamento de exames a partir de pedidos médicos",
-  "model": "gemini-2.5-flash",
+  "model": "gemini-2.5-flash-lite",
   "instruction": "Você recebe uma imagem...",
   "mcp_servers": [
     {"name": "ocr", "url": "http://ocr-mcp:8001/sse"},
@@ -455,6 +462,7 @@ Registradas em [`docs/adr/`](adr/README.md):
 - [ADR-0006](adr/0006-spec-schema-and-agent-topology.md) — Schema do JSON spec + topologia LlmAgent único.
 - [ADR-0007](adr/0007-rag-fuzzy-and-catalog.md) — RAG MCP via rapidfuzz + catálogo CSV.
 - [ADR-0008](adr/0008-robust-validation-policy.md) — Robustez de validação: taxonomia de erros, guardrails e shape de resposta.
+- [ADR-0009](adr/0009-runtime-config-via-env.md) — Configuração de runtime via variáveis de ambiente (parcial supersede de ADR-0006 no escopo do campo `model`).
 
 ## Diagrama de fluxo (pedido médico)
 

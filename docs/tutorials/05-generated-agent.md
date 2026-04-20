@@ -261,5 +261,5 @@ A `instruction` do agente proíbe retry para esse código. O agente reporta camp
 - **Narrativa E2E:** [`docs/WALKTHROUGH.md`](../WALKTHROUGH.md) (a ser entregue pelo `software-architect`)
 - **Ajustar instrução do agente:** campo `instruction` em `generated_agent/agent.py`. Qualquer mudança que altere o contrato com tools (nomes, ordem de chamada) exige revisão do `code-reviewer`.
 - **Adicionar nova tool MCP:** adicione entrada em `mcp_servers` no `spec.json`, regere com `python -m transpiler spec.json -o ./generated_agent`, e rebuild. Novo campo no spec exige ADR supersedendo ADR-0006.
-- **Trocar modelo LLM:** o campo `model` é `Literal["gemini-2.5-flash"]` (ADR-0006). Alterar exige ADR nova supersedendo ADR-0006 e ADR-0005.
+- **Trocar modelo LLM:** o campo `model` é `Literal["gemini-2.5-flash", "gemini-2.5-flash-lite"]` (ampliado por ADR-0009; ADR-0006 parcialmente superseded no escopo desse campo). Para trocar sem rebuild em runtime, definir `GEMINI_MODEL` no `.env` (ver [`docs/CONFIGURATION.md` § 3](../CONFIGURATION.md)). Ampliar a allowlist para um modelo novo exige ADR supersedendo ADR-0009.
 - **Habilitar streaming:** atualmente desativado no MVP por segurança (ADR-0003 § "Risco operacional: stream completion"). Habilitar requer `after_model_callback` para PII na saída antes de ativar.
