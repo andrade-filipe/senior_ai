@@ -4,12 +4,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import hashlib
 import json
 import logging
-import mimetypes
 import os
-import re
 import sys
 import typing
 import uuid
@@ -20,15 +17,21 @@ import pydantic
 from pydantic import BaseModel, field_validator
 
 from generated_agent.logging_ import configure_logging
+from generated_agent.preocr import _build_preocr_prompt, _PreOcrError, _run_preocr
 
 _LOGGER = logging.getLogger(__name__)
 
 _AGENT_TIMEOUT = float(os.environ.get("AGENT_TIMEOUT_SECONDS", "300"))  # seconds, ADR-0008 / AC18
+_PREOCR_MCP_TIMEOUT = float(os.environ.get("PREOCR_MCP_TIMEOUT_SECONDS", "10"))  # spec 0010
+_PREOCR_MCP_CONNECT_RETRIES = int(os.environ.get("PREOCR_MCP_CONNECT_RETRIES", "1"))
+_OCR_MCP_URL = os.environ.get("OCR_MCP_URL", "http://ocr-mcp:8001/sse")
 
-# Error code constants (MAJOR-3)
+# Error code constants (MAJOR-3 + spec 0010)
 _E_AGENT_INPUT_NOT_FOUND = "E_AGENT_INPUT_NOT_FOUND"
 _E_AGENT_OUTPUT_INVALID = "E_AGENT_OUTPUT_INVALID"
 _E_AGENT_TIMEOUT = "E_AGENT_TIMEOUT"
+_E_OCR_UNKNOWN_IMAGE = "E_OCR_UNKNOWN_IMAGE"
+_E_MCP_UNAVAILABLE = "E_MCP_UNAVAILABLE"
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +133,7 @@ def format_ascii_table(
 
 
 # ---------------------------------------------------------------------------
-# Error helpers (MAJOR-1)
+# Error helpers (MAJOR-1: NoReturn + correlation_id in envelope)
 # ---------------------------------------------------------------------------
 
 
@@ -192,16 +195,16 @@ def _parse_args() -> argparse.Namespace:
 # ---------------------------------------------------------------------------
 
 
-async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "image/png") -> Any:
-    """Run the ADK agent with raw image bytes as an inline_data Part.
+async def _run_agent(exams: list[str], correlation_id: str) -> Any:
+    """Run the ADK agent with a text-only prompt containing the exam list.
 
-    Builds the agent via _build_agent(correlation_id) so every MCP connection
-    carries X-Correlation-ID. Image is transmitted as genai_types.Part with
-    inline_data Blob — NOT as a text/base64 part — so PII callback only
-    iterates legitimate text parts (BLOCKER-1).
+    Pre-OCR (spec 0010 / ADR-0010): the OCR step runs in the CLI before this
+    function is called; the agent receives the detected exams as plain text
+    and never sees the image bytes. This eliminates the "LLM fabricates
+    base64" failure mode documented in ADR-0010.
 
     Args:
-        image_bytes: Raw bytes of the image file.
+        exams: Exam names already extracted and PII-masked by the OCR server.
         correlation_id: UUID to propagate as X-Correlation-ID.
 
     Returns:
@@ -209,7 +212,6 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
     """
     from google.adk.runners import Runner  # noqa: PLC0415
     from google.adk.sessions import InMemorySessionService  # noqa: PLC0415
-    from google.genai import types as genai_types  # noqa: PLC0415
 
     from generated_agent.agent import _build_agent  # noqa: PLC0415
 
@@ -219,7 +221,7 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
     session_service = InMemorySessionService()
     runner = Runner(
         agent=agent,
-        app_name="medical_order_agent",  # ADK requires valid Python identifier
+        app_name="medical_order_agent",
         session_service=session_service,
     )
     session = await session_service.create_session(
@@ -227,39 +229,24 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
         user_id="cli-user",
     )
 
-    # BLOCKER-1: image as inline_data Blob so the PII callback only sees
-    # legitimate text parts, not a base64 string masquerading as text.
-    image_part = genai_types.Part.from_bytes(
-        data=image_bytes,
-        mime_type=mime_type,
-    )
-    instruction_part = genai_types.Part(
-        text="Processe o pedido medico na imagem fornecida e siga o plano fixo."
-    )
-    prompt_content = genai_types.Content(
-        role="user",
-        parts=[image_part, instruction_part],
-    )
+    prompt_content = _build_preocr_prompt(exams)
 
     _LOGGER.info(
         "agent.run.start",
         extra={
             "event": "agent.run.start",
             "correlation_id": correlation_id,
-            "image_sha256_prefix": hashlib.sha256(image_bytes).hexdigest()[:8],
+            "exam_count": len(exams),
         },
     )
 
     final_response = None
-    last_text_event = None
     try:  # MAJOR-4: try/finally for session cleanup
         async for event in runner.run_async(
             user_id="cli-user",
             session_id=session.id,
             new_message=prompt_content,
         ):
-            if _event_has_text(event):
-                last_text_event = event
             if hasattr(event, "is_final_response") and event.is_final_response():
                 final_response = event
                 break
@@ -273,54 +260,7 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
         # InMemorySessionService has no persistent resources — no delete needed.
         # If a persistent session service is added, call delete_session() here.
 
-    # If the final event carried only tool_calls / no text, fall back to the
-    # last event that did carry text. Gemini sometimes flags a function-call
-    # event as final before emitting the post-call text in a trailing event.
-    if final_response is not None and not _event_has_text(final_response) and last_text_event is not None:
-        _LOGGER.info(
-            "agent.final.fallback_to_last_text",
-            extra={"event": "agent.final.fallback_to_last_text", "correlation_id": correlation_id},
-        )
-        return last_text_event
-    return final_response if final_response is not None else last_text_event
-
-
-def _event_has_text(event: Any) -> bool:
-    """Return True if the event carries at least one non-empty text part."""
-    content = getattr(event, "content", None)
-    parts = getattr(content, "parts", None) if content is not None else None
-    if not parts:
-        return False
-    for part in parts:
-        part_text = getattr(part, "text", None)
-        if isinstance(part_text, str) and part_text.strip():
-            return True
-    return False
-
-
-_JSON_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL | re.IGNORECASE)
-
-
-def _strip_json_fence(text: str) -> str:
-    """Remove ```json ... ``` fences if the model wrapped its reply in one.
-
-    The instruction tells the model not to use code fences, but Gemini still
-    emits them occasionally. If a fence is not present, the text is returned
-    unchanged. Also extracts the first {...} block if surrounded by prose.
-    """
-    if not text:
-        return text
-    stripped = text.strip()
-    match = _JSON_FENCE_RE.match(stripped)
-    if match:
-        return match.group(1).strip()
-    # If response isn't pure JSON but contains one, extract the outermost {...}.
-    if not stripped.startswith("{"):
-        first = stripped.find("{")
-        last = stripped.rfind("}")
-        if first != -1 and last != -1 and last > first:
-            return stripped[first : last + 1]
-    return stripped
+    return final_response
 
 
 def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
@@ -336,18 +276,16 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
     Raises:
         SystemExit(3): when JSON or Pydantic validation fails (AC19).
     """
+    # Extract text from ADK Event (MINOR-8: docstring updated)
     text: str = ""
-    if hasattr(raw, "content") and hasattr(raw.content, "parts") and raw.content is not None:
-        for part in raw.content.parts or []:
-            part_text = getattr(part, "text", None)
-            if isinstance(part_text, str):
-                text += part_text
+    if hasattr(raw, "content") and hasattr(raw.content, "parts"):
+        for part in raw.content.parts:
+            if hasattr(part, "text"):
+                text += part.text
     elif isinstance(raw, str):
         text = raw
     else:
         text = str(raw) if raw is not None else ""
-
-    text = _strip_json_fence(text)
 
     # MAJOR-2: narrow exception catch — only JSON/Pydantic failures are expected
     try:
@@ -366,13 +304,9 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
             code=_E_AGENT_OUTPUT_INVALID,
             message="Saida do agente nao corresponde ao schema esperado.",
             correlation_id=correlation_id,
-            hint=(
-                "Verifique se o agente retornou JSON valido com campos "
-                "exams[], appointment_id, scheduled_for."
-            ),
+            hint="Verifique se o agente retornou JSON valido com campos exams[], appointment_id, scheduled_for.",
             exit_code=3,
         )
-        # MINOR-2: unreachable raise removed — _exit_error is NoReturn
 
     return output
 
@@ -392,10 +326,11 @@ def main() -> int:
     args = _parse_args()
     correlation_id = str(uuid.uuid4())
 
+    # Read image bytes (MAJOR-3: use correct error code for missing file)
     image_path = args.image
     if not os.path.isfile(image_path):
         _exit_error(
-            code=_E_AGENT_INPUT_NOT_FOUND,  # MAJOR-3: correct error code for missing file
+            code=_E_AGENT_INPUT_NOT_FOUND,
             message=f"Arquivo de imagem nao encontrado: {image_path}",
             correlation_id=correlation_id,
             hint="Verifique o caminho passado em --image.",
@@ -405,14 +340,50 @@ def main() -> int:
     with open(image_path, "rb") as fh:
         image_bytes = fh.read()
 
-    guessed_mime, _ = mimetypes.guess_type(image_path)
-    image_mime = guessed_mime or "image/png"
+    # Pre-OCR step (spec 0010 / ADR-0010): CLI orchestrates the OCR call
+    # deterministically before the LlmAgent sees anything. If this fails, the
+    # agent is never invoked.
+    try:
+        exams = asyncio.run(
+            _run_preocr(
+                image_bytes=image_bytes,
+                correlation_id=correlation_id,
+                mcp_url=_OCR_MCP_URL,
+                timeout_s=_PREOCR_MCP_TIMEOUT,
+                connect_retries=_PREOCR_MCP_CONNECT_RETRIES,
+            )
+        )
+    except _PreOcrError as exc:
+        if exc.code == _E_MCP_UNAVAILABLE:
+            _exit_error(
+                code=_E_MCP_UNAVAILABLE,
+                message=exc.message,
+                correlation_id=correlation_id,
+                hint=exc.hint,
+                exit_code=5,
+            )
+        _exit_error(
+            code=exc.code,
+            message=exc.message,
+            correlation_id=correlation_id,
+            hint=exc.hint,
+            exit_code=4,
+        )
+
+    if not exams:
+        _exit_error(
+            code=_E_OCR_UNKNOWN_IMAGE,
+            message="OCR nao retornou exames para a imagem fornecida.",
+            correlation_id=correlation_id,
+            hint="Verifique se a imagem corresponde a uma fixture registrada no ocr-mcp.",
+            exit_code=4,
+        )
 
     # Run agent with hard timeout (ADR-0008 / AC18)
     try:
         raw = asyncio.run(
             asyncio.wait_for(
-                _run_agent(image_bytes, correlation_id, image_mime),
+                _run_agent(exams, correlation_id),
                 timeout=_AGENT_TIMEOUT,
             )
         )
