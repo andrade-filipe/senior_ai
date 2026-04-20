@@ -469,3 +469,53 @@ def test_pii_allow_list_empty_when_no_guardrails(tmp_path: Path) -> None:
     )
     ctx = _context(spec)
     assert ctx["pii_allow_list"] == []
+
+
+# ---------------------------------------------------------------------------
+# X3 — ADR-0009: GEMINI_MODEL env override present in rendered agent.py
+# T001 (ADR-0009 transpiler surface)
+# ---------------------------------------------------------------------------
+
+
+def test_gemini_model_env_override_in_agent_py(
+    spec_example_dict: dict[str, Any],
+    tmp_path: Path,
+) -> None:
+    """X3 (ADR-0009) — rendered agent.py contains os.environ.get("GEMINI_MODEL" ...
+
+    Ensures the template emits an env-backed model selection so the operator
+    can switch Gemini pools without a rebuild (ADR-0009 principle).
+    The spec model value becomes the fallback default inside os.environ.get.
+    """
+    spec = load_spec(spec_example_dict)
+    render(spec, tmp_path)
+
+    agent_py = (tmp_path / "generated_agent" / "agent.py").read_text(encoding="utf-8")
+
+    assert 'os.environ.get("GEMINI_MODEL"' in agent_py, (
+        "agent.py must use os.environ.get('GEMINI_MODEL', ...) for ADR-0009 env override"
+    )
+
+
+def test_gemini_model_env_override_uses_spec_as_default(
+    spec_example_dict: dict[str, Any],
+    tmp_path: Path,
+) -> None:
+    """X3 complement — the spec model string is the fallback default in os.environ.get.
+
+    Verifies that the spec value appears as the second argument to os.environ.get,
+    so behaviour is unchanged when GEMINI_MODEL is unset.
+    The template uses tojson which produces JSON double-quoted strings.
+    """
+    spec = load_spec(spec_example_dict)
+    render(spec, tmp_path)
+
+    agent_py = (tmp_path / "generated_agent" / "agent.py").read_text(encoding="utf-8")
+    model_value = spec_example_dict["model"]
+    # tojson renders strings with double quotes: "gemini-2.5-flash"
+    expected_fragment = f'os.environ.get("GEMINI_MODEL", "{model_value}")'
+
+    assert expected_fragment in agent_py, (
+        f"agent.py must fall back to spec model {model_value!r} when GEMINI_MODEL is unset. "
+        f"Expected fragment: {expected_fragment!r}"
+    )

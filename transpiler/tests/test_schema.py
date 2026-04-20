@@ -41,12 +41,35 @@ def test_valid_example_parses(spec_example_dict: dict[str, Any]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# AC2 — model not in allowlist
+# AC2 — model allowlist: retrocompat + new lite value + rejection with message
 # ---------------------------------------------------------------------------
 
 
+def test_model_gemini_flash_accepted(spec_example_dict: dict[str, Any]) -> None:
+    """AC2 / ADR-0009 — 'gemini-2.5-flash' remains a valid model (retrocompat).
+
+    Widening the Literal must not break specs already using the original model.
+    """
+    spec = deepcopy(spec_example_dict)
+    spec["model"] = "gemini-2.5-flash"
+    agent = load_spec(spec)
+    assert agent.model == "gemini-2.5-flash"
+
+
+def test_model_gemini_flash_lite_accepted(spec_example_dict: dict[str, Any]) -> None:
+    """AC2 / ADR-0009 — 'gemini-2.5-flash-lite' is accepted after Literal widening."""
+    spec = deepcopy(spec_example_dict)
+    spec["model"] = "gemini-2.5-flash-lite"
+    agent = load_spec(spec)
+    assert agent.model == "gemini-2.5-flash-lite"
+
+
 def test_invalid_model_rejected(spec_example_dict: dict[str, Any]) -> None:
-    """AC2 — model value outside Literal allowlist raises TranspilerError E_TRANSPILER_SCHEMA."""
+    """AC2 — model value outside Literal allowlist raises TranspilerError E_TRANSPILER_SCHEMA.
+
+    The error message must list BOTH accepted values so the operator knows their
+    options after ADR-0009 widened the allowlist.
+    """
     bad = deepcopy(spec_example_dict)
     bad["model"] = "gpt-4"
 
@@ -55,10 +78,11 @@ def test_invalid_model_rejected(spec_example_dict: dict[str, Any]) -> None:
 
     err = exc_info.value
     assert err.code == "E_TRANSPILER_SCHEMA"
-    # message must mention the offending field and accepted values
+    # message must mention the offending field and BOTH accepted values
     combined = f"{err.message} {err.hint or ''}"
     assert "model" in combined.lower()
     assert "gemini-2.5-flash" in combined
+    assert "gemini-2.5-flash-lite" in combined
 
 
 # ---------------------------------------------------------------------------

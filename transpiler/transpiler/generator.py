@@ -17,6 +17,7 @@ Design by Contract (full table in docs/specs/0002-transpiler-mvp/plan.md):
 from __future__ import annotations
 
 import ast
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,7 @@ from transpiler.schema import AgentSpec
 # Constants
 # ---------------------------------------------------------------------------
 
-_AGENT_PY_MAX_BYTES = 100 * 1024  # 100 KB, ADR-0008 / AC13
+_AGENT_PY_MAX_BYTES: int = int(os.environ.get("TRANSPILER_AGENT_PY_MAX_BYTES", str(100 * 1024)))  # ADR-0008 / AC13
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _OUTPUT_SUBDIR = "generated_agent"
 

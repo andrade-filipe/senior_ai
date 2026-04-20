@@ -25,7 +25,10 @@ RUN cd /app/{{ name | replace('-', '_') }} && uv pip install --system --no-cache
 
 # spaCy model — PII Layer 2 (before_model_callback) runs in-process.
 # Bake at build time: runtime download (~568 MB) would trip the 5 s PII guard.
-RUN python -m spacy download pt_core_news_lg
+# ARG lets the operator swap the model (e.g. pt_core_news_sm) via build.args
+# in docker-compose.yml without touching application code (ADR-0009).
+ARG PII_SPACY_MODEL_PT=pt_core_news_lg
+RUN python -m spacy download $PII_SPACY_MODEL_PT
 {% endif %}
 
 # Google Gemini direct API — no Vertex AI (ADR-0005)

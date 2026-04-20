@@ -16,6 +16,7 @@ Design by Contract summary (full table in docs/specs/0001-agentspec-schema/plan.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -31,7 +32,7 @@ from transpiler.errors import TranspilerError, format_validation_error
 # We validate the raw string length BEFORE Pydantic coerces the value so the
 # cap check happens on the original input (borda check per ADR-0008).
 
-_MAX_URL_LEN = 2048
+_MAX_URL_LEN: int = int(os.environ.get("TRANSPILER_MAX_URL_LEN", "2048"))
 
 
 def _validate_url_length(v: Any) -> Any:  # noqa: ANN401
@@ -61,12 +62,12 @@ BoundedUrl = Annotated[
 # Sub-models
 # ---------------------------------------------------------------------------
 
-_MAX_NAME_LEN = 500
-_MAX_DESC_LEN = 500
-_MAX_INSTRUCTION_BYTES = 4096  # ADR-0008 / AC20 — UTF-8 byte cap for Gemini prompt cache
-_MAX_MCP_SERVERS = 10
-_MAX_HTTP_TOOLS = 20
-_MAX_TOOL_FILTER = 50
+_MAX_NAME_LEN = 500  # schema contract — not an ops tunable (ADR-0009)
+_MAX_DESC_LEN = 500  # schema contract — not an ops tunable (ADR-0009)
+_MAX_INSTRUCTION_BYTES: int = int(os.environ.get("TRANSPILER_MAX_INSTRUCTION_BYTES", "4096"))  # ADR-0008 / AC20
+_MAX_MCP_SERVERS: int = int(os.environ.get("TRANSPILER_MAX_MCP_SERVERS", "10"))
+_MAX_HTTP_TOOLS: int = int(os.environ.get("TRANSPILER_MAX_HTTP_TOOLS", "20"))
+_MAX_TOOL_FILTER: int = int(os.environ.get("TRANSPILER_MAX_TOOL_FILTER", "50"))
 
 
 class McpServerSpec(BaseModel):
@@ -147,7 +148,7 @@ class AgentSpec(BaseModel):
     """Root schema for a transpiler input spec (ADR-0006, frozen).
 
     Invariant:
-        - model must be 'gemini-2.5-flash' (ADR-0006 allowlist, ADR-0005).
+        - model must be 'gemini-2.5-flash' or 'gemini-2.5-flash-lite' (ADR-0006 partially superseded by ADR-0009).
         - name matches ^[a-z0-9][a-z0-9-]*$ and is ≤ 500 chars.
         - description is ≤ 500 chars.
         - instruction is ≤ 4096 bytes UTF-8 (ADR-0008 / AC20).
@@ -170,8 +171,11 @@ class AgentSpec(BaseModel):
         max_length=_MAX_DESC_LEN,
         description="Short human-readable description of the agent.",
     )
-    model: Literal["gemini-2.5-flash"] = Field(
-        description="LLM model identifier. Literal forces a conscious ADR when changing models.",
+    model: Literal["gemini-2.5-flash", "gemini-2.5-flash-lite"] = Field(
+        description=(
+            "LLM model identifier. Literal forces a conscious ADR when changing models. "
+            "Superseded in part by ADR-0009: GEMINI_MODEL env overrides this at runtime."
+        ),
     )
     instruction: str = Field(
         description="System prompt / instruction for the LlmAgent (imperative style, ≤ 4096 bytes UTF-8 per ADR-0008).",
@@ -236,7 +240,7 @@ class AgentSpec(BaseModel):
 # Public loader
 # ---------------------------------------------------------------------------
 
-_MAX_SPEC_BYTES = 1_048_576  # 1 MB
+_MAX_SPEC_BYTES: int = int(os.environ.get("TRANSPILER_SPEC_MAX_BYTES", "1048576"))  # default 1 MB
 
 
 def load_spec(source: str | Path | dict[str, Any]) -> AgentSpec:
@@ -348,7 +352,7 @@ def _build_user_message(
     path_str = ".".join(str(p) for p in loc) if loc else "(raiz)"
 
     if pydantic_type == "literal_error" and loc and loc[-1] == "model":
-        allowed = ["gemini-2.5-flash"]
+        allowed = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
         received = data.get("model", "<ausente>")
         return (
             f"Campo `model` inválido: '{received}' não é um valor aceito. "
@@ -411,8 +415,8 @@ def _build_hint(pydantic_type: str, loc: tuple[int | str, ...]) -> str:
     """
     if pydantic_type == "literal_error" and loc and loc[-1] == "model":
         return (
-            "Defina `model` como 'gemini-2.5-flash'. "
-            "Outros modelos exigem nova ADR (ADR-0006)."
+            "Defina `model` como 'gemini-2.5-flash' ou 'gemini-2.5-flash-lite'. "
+            "Outros modelos exigem nova ADR (ADR-0006, parcialmente supersedida por ADR-0009)."
         )
 
     if pydantic_type == "string_pattern_mismatch":

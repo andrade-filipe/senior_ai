@@ -56,6 +56,14 @@ _{{ tool.name | replace("-", "_") }}_openapi_url: str = os.environ.get(
     {{ (tool.openapi_url if tool.openapi_url else (tool.base_url + "/openapi.json")) | tojson }},
 )
 
+# ADR-0009: fetch timeout tunable via env without regenerating the agent.
+_{{ tool.name | replace("-", "_") }}_fetch_timeout_seconds: float = float(
+    os.environ.get(
+        {{ (tool.name.upper().replace("-", "_") + "_OPENAPI_FETCH_TIMEOUT_SECONDS") | tojson }},
+        "10",
+    )
+)
+
 
 def _load_{{ tool.name | replace("-", "_") }}_toolset(correlation_id: str) -> "OpenAPIToolset":
     """Fetch OpenAPI spec for {{ tool.name }} and return a toolset.
@@ -76,7 +84,7 @@ def _load_{{ tool.name | replace("-", "_") }}_toolset(correlation_id: str) -> "O
     """
     resp = httpx.get(
         _{{ tool.name | replace("-", "_") }}_openapi_url,
-        timeout=10.0,
+        timeout=_{{ tool.name | replace("-", "_") }}_fetch_timeout_seconds,
         headers={"X-Correlation-ID": correlation_id},
     )
     resp.raise_for_status()
@@ -133,9 +141,10 @@ def _build_agent(correlation_id: str) -> LlmAgent:
         _tools.append({{ tool.name | replace("-", "_") }}_toolset)
 {% endfor %}
 
+    # ADR-0009: GEMINI_MODEL env overrides spec default at runtime
     return LlmAgent(
         name={{ name | replace("-", "_") | tojson }},  # ADK requires valid Python identifier
-        model={{ model | tojson }},
+        model=os.environ.get("GEMINI_MODEL", {{ model | tojson }}),
         description={{ description | tojson }},
         instruction={{ instruction | tojson }},
         tools=_tools,
