@@ -9,6 +9,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 import sys
 import typing
 import uuid
@@ -22,7 +23,7 @@ from generated_agent.logging_ import configure_logging
 
 _LOGGER = logging.getLogger(__name__)
 
-_AGENT_TIMEOUT = 300.0  # seconds, ADR-0008 / AC18
+_AGENT_TIMEOUT = float(os.environ.get("AGENT_TIMEOUT_SECONDS", "300"))  # seconds, ADR-0008 / AC18
 
 # Error code constants (MAJOR-3)
 _E_AGENT_INPUT_NOT_FOUND = "E_AGENT_INPUT_NOT_FOUND"
@@ -250,12 +251,15 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
     )
 
     final_response = None
+    last_text_event = None
     try:  # MAJOR-4: try/finally for session cleanup
         async for event in runner.run_async(
             user_id="cli-user",
             session_id=session.id,
             new_message=prompt_content,
         ):
+            if _event_has_text(event):
+                last_text_event = event
             if hasattr(event, "is_final_response") and event.is_final_response():
                 final_response = event
                 break
@@ -269,7 +273,54 @@ async def _run_agent(image_bytes: bytes, correlation_id: str, mime_type: str = "
         # InMemorySessionService has no persistent resources — no delete needed.
         # If a persistent session service is added, call delete_session() here.
 
-    return final_response
+    # If the final event carried only tool_calls / no text, fall back to the
+    # last event that did carry text. Gemini sometimes flags a function-call
+    # event as final before emitting the post-call text in a trailing event.
+    if final_response is not None and not _event_has_text(final_response) and last_text_event is not None:
+        _LOGGER.info(
+            "agent.final.fallback_to_last_text",
+            extra={"event": "agent.final.fallback_to_last_text", "correlation_id": correlation_id},
+        )
+        return last_text_event
+    return final_response if final_response is not None else last_text_event
+
+
+def _event_has_text(event: Any) -> bool:
+    """Return True if the event carries at least one non-empty text part."""
+    content = getattr(event, "content", None)
+    parts = getattr(content, "parts", None) if content is not None else None
+    if not parts:
+        return False
+    for part in parts:
+        part_text = getattr(part, "text", None)
+        if isinstance(part_text, str) and part_text.strip():
+            return True
+    return False
+
+
+_JSON_FENCE_RE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_json_fence(text: str) -> str:
+    """Remove ```json ... ``` fences if the model wrapped its reply in one.
+
+    The instruction tells the model not to use code fences, but Gemini still
+    emits them occasionally. If a fence is not present, the text is returned
+    unchanged. Also extracts the first {...} block if surrounded by prose.
+    """
+    if not text:
+        return text
+    stripped = text.strip()
+    match = _JSON_FENCE_RE.match(stripped)
+    if match:
+        return match.group(1).strip()
+    # If response isn't pure JSON but contains one, extract the outermost {...}.
+    if not stripped.startswith("{"):
+        first = stripped.find("{")
+        last = stripped.rfind("}")
+        if first != -1 and last != -1 and last > first:
+            return stripped[first : last + 1]
+    return stripped
 
 
 def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
@@ -286,14 +337,17 @@ def _parse_runner_output(raw: Any, correlation_id: str) -> _RunnerOutput:
         SystemExit(3): when JSON or Pydantic validation fails (AC19).
     """
     text: str = ""
-    if hasattr(raw, "content") and hasattr(raw.content, "parts"):
-        for part in raw.content.parts:
-            if hasattr(part, "text"):
-                text += part.text
+    if hasattr(raw, "content") and hasattr(raw.content, "parts") and raw.content is not None:
+        for part in raw.content.parts or []:
+            part_text = getattr(part, "text", None)
+            if isinstance(part_text, str):
+                text += part_text
     elif isinstance(raw, str):
         text = raw
     else:
         text = str(raw) if raw is not None else ""
+
+    text = _strip_json_fence(text)
 
     # MAJOR-2: narrow exception catch — only JSON/Pydantic failures are expected
     try:

@@ -24,7 +24,7 @@ def test_fixtures_exist_and_spec_valid(spec_example_path: str, sample_medical_or
     # spec.example.json passes the transpiler validator
     spec = load_spec(spec_example_path)
     assert spec.name == "medical-order-agent"
-    assert spec.model == "gemini-2.5-flash"
+    assert spec.model in {"gemini-2.5-flash", "gemini-2.5-flash-lite"}
     assert len(spec.mcp_servers) >= 1
     assert len(spec.http_tools) >= 1
     assert spec.guardrails.pii.enabled is True

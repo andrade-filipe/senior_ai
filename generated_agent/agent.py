@@ -5,10 +5,7 @@ NOTE (ADK real-world finding):
     of google-adk. It requires spec_dict or spec_str. The scheduling toolset
     is therefore initialised lazily inside _build_agent() via _load_scheduling_toolset(),
     which fetches the OpenAPI spec from the SCHEDULING_OPENAPI_URL environment
-    variable using httpx.
-
-    This diverges from the template design; the template (agent.py.j2) is updated
-    to reflect the same pattern. The transpiler-engineer should review.
+    variable using httpx. The template (agent.py.j2) matches this pattern.
 
 NOTE (adk web / adk run dev-server):
     The `root_agent` module-level variable is kept for `adk web` / `adk run`
@@ -48,6 +45,10 @@ _SCHEDULING_OPENAPI_URL = os.environ.get(
     "SCHEDULING_OPENAPI_URL",
     "http://scheduling-api:8000/openapi.json",
 )
+_GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+_SPEC_FETCH_TIMEOUT_SECONDS = float(
+    os.environ.get("SCHEDULING_OPENAPI_FETCH_TIMEOUT_SECONDS", "10")
+)
 
 
 def _load_scheduling_toolset(correlation_id: str) -> OpenAPIToolset:
@@ -72,7 +73,7 @@ def _load_scheduling_toolset(correlation_id: str) -> OpenAPIToolset:
     """
     resp = httpx.get(
         _SCHEDULING_OPENAPI_URL,
-        timeout=10.0,
+        timeout=_SPEC_FETCH_TIMEOUT_SECONDS,
         headers={"X-Correlation-ID": correlation_id},
     )
     resp.raise_for_status()
@@ -134,23 +135,25 @@ def _build_agent(correlation_id: str) -> LlmAgent:
 
     return LlmAgent(
         name="medical_order_agent",  # ADK requires valid Python identifier — hyphens not allowed
-        model="gemini-2.5-flash",
+        model=_GEMINI_MODEL,
         description="Agente de agendamento de exames a partir de pedidos medicos digitalizados",
         instruction=(
             "Voce e um agente de agendamento de exames medicos. Siga o plano abaixo na ordem exata.\n\n"
             "PLANO FIXO (plan-then-execute):\n"
-            "1. Chame extract_exams_from_image(image_base64) UMA vez para obter a lista de exames.\n"
+            "1. Chame extract_exams_from_image(image_base64) UMA VEZ para obter a lista de exames. NAO repita esta chamada.\n"
             "2. Para cada exame retornado, chame search_exam_code EM PARALELO (emita multiplas tool calls na mesma resposta).\n"
-            "3. Monte uma lista interna [(nome, codigo, score, correlation_id)] - NAO formate a saida ainda (assembled reformat).\n"
-            "4. Se search_exam_code retornar null ou score < 0.80: chame list_exams(limit=20) e apresente os candidatos ao usuario pedindo confirmacao. Marque o exame como nao-conclusivo.\n"
-            "5. Faca UM UNICO POST /api/v1/appointments com todos os exames no campo exams[].\n"
-            "6. SO ENTAO formate a tabela ASCII final citando nome, codigo, origem (rag-mcp), score e correlation_id (trustworthy generation).\n\n"
+            "3. Monte uma lista interna [(nome, codigo, score)] - NAO formate a saida ainda.\n"
+            "4. Se search_exam_code retornar null ou score < 0.80: chame list_exams(limit=20) UMA vez, escolha o candidato mais proximo, marque inconclusive=true e prossiga. NAO pergunte ao usuario - nao ha usuario interativo.\n"
+            "5. Faca UM UNICO POST /api/v1/appointments com todos os exames no campo exams[]. Use patient_ref='anon-<hash>' (invente um hash curto). Leia appointment_id e scheduled_for da resposta.\n"
+            "6. SAIDA FINAL: responda APENAS com um unico objeto JSON valido, sem markdown, sem cercas de codigo, sem texto antes ou depois. Schema obrigatorio:\n"
+            "{\"exams\": [{\"name\": \"<nome>\", \"code\": \"<codigo>\", \"score\": <float 0..1>, \"inconclusive\": <bool>}, ...], \"appointment_id\": \"<id retornado pela API>\", \"scheduled_for\": \"<ISO-8601 retornado pela API>\"}\n"
+            "Nao inclua nenhum outro campo. Nao use ```json. Retorne SOMENTE o objeto JSON.\n\n"
             "POLITICA DE ERROS (congelada):\n"
             "- E_MCP_TIMEOUT: 1 retry com delay fixo de 500ms; se persistir, propague erro com hint 'Verifique docker compose ps' e aborte.\n"
-            "- E_RAG_NO_MATCH (null ou score<0.80): zero retry. Chame list_exams(limit=20) e apresente candidatos antes de continuar.\n"
+            "- E_RAG_NO_MATCH (null ou score<0.80): zero retry. Chame list_exams(limit=20), pegue o candidato mais proximo, marque inconclusive=true.\n"
             "- E_API_VALIDATION (422): zero retry - agendamento duplicado e inaceitavel. Reporte campo + motivo da mensagem Pydantic.\n\n"
             "RESTRICOES:\n"
-            "- NUNCA inclua nomes, CPFs ou telefones no texto final. Use <PERSON>, <CPF> conforme recebidos.\n"
+            "- NUNCA inclua nomes, CPFs ou telefones no JSON final. Use <PERSON>, <CPF> conforme recebidos.\n"
             "- patient_ref e SEMPRE anon-<hash>. Nunca invente nomes reais.\n"
             "- Registre cada chamada de tool com params_hash e correlation_id para rastreabilidade."
         ),
