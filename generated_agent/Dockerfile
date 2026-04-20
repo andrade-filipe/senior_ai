@@ -17,11 +17,16 @@ COPY generated_agent /app/generated_agent
 # Install all deps via uv pip install --system (ADR-0005)
 RUN cd /app/generated_agent && uv pip install --system --no-cache .
 
+# spaCy model — PII Layer 2 (before_model_callback) runs in-process inside
+# the agent container. Runtime download would trip the 5 s guard timeout.
+RUN python -m spacy download pt_core_news_lg
+
 # Google Gemini direct API — no Vertex AI (ADR-0005)
 ENV GOOGLE_GENAI_USE_VERTEXAI=FALSE
 ENV PYTHONUNBUFFERED=1
 
 # One-shot CLI — no HEALTHCHECK needed; compose uses service_started (ADR-0001)
-# Caller passes --image <path> at runtime, e.g.:
-#   docker compose run --rm generated-agent --image /fixtures/sample_medical_order.png
-CMD ["python", "-m", "generated_agent"]
+# ENTRYPOINT (not CMD) so `docker compose run ... --image <path>` appends to
+# the module invocation instead of replacing it. With CMD the runtime args
+# would shadow ["python","-m","generated_agent"] and exec `--image` directly.
+ENTRYPOINT ["python", "-m", "generated_agent"]

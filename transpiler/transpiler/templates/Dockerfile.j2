@@ -21,12 +21,19 @@ COPY {{ name | replace('-', '_') }} /app/{{ name | replace('-', '_') }}
 
 # Install all deps via uv pip install --system (ADR-0005)
 RUN cd /app/{{ name | replace('-', '_') }} && uv pip install --system --no-cache .
+{% if pii_enabled %}
+
+# spaCy model — PII Layer 2 (before_model_callback) runs in-process.
+# Bake at build time: runtime download (~568 MB) would trip the 5 s PII guard.
+RUN python -m spacy download pt_core_news_lg
+{% endif %}
 
 # Google Gemini direct API — no Vertex AI (ADR-0005)
 ENV GOOGLE_GENAI_USE_VERTEXAI=FALSE
 ENV PYTHONUNBUFFERED=1
 
 # One-shot CLI — no HEALTHCHECK (compose uses service_started, ADR-0001).
-# Caller passes --image <path> at runtime, e.g.:
-#   docker compose run --rm {{ name }} --image /fixtures/sample_medical_order.png
-CMD ["python", "-m", "{{ name | replace('-', '_') }}"]
+# ENTRYPOINT (not CMD) so `docker compose run ... --image <path>` appends to
+# the module invocation instead of replacing it. With CMD, runtime args shadow
+# the module and Docker tries to exec `--image` as a binary.
+ENTRYPOINT ["python", "-m", "{{ name | replace('-', '_') }}"]
