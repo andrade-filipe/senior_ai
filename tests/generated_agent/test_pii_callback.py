@@ -121,7 +121,7 @@ def test_build_agent_mcp_headers_include_correlation_id() -> None:
             if params is not None:
                 captured_headers.append(params.headers)
 
-    class FakeStreamableHTTPConnectionParams:
+    class FakeSseConnectionParams:
         def __init__(self, **kwargs: Any) -> None:
             self.url = kwargs.get("url", "")
             self.headers = kwargs.get("headers", {})
@@ -132,7 +132,7 @@ def test_build_agent_mcp_headers_include_correlation_id() -> None:
 
     fake_adk_agents.LlmAgent = FakeLlmAgent
     fake_adk_mcp.McpToolset = FakeMcpToolset
-    fake_adk_mcp_mgr.StreamableHTTPConnectionParams = FakeStreamableHTTPConnectionParams
+    fake_adk_mcp_mgr.SseConnectionParams = FakeSseConnectionParams
     fake_adk_openapi_toolset.OpenAPIToolset = FakeOpenAPIToolset
     fake_adk_base_tool.BaseTool = object
     fake_adk_base_toolset.BaseToolset = object
@@ -222,7 +222,7 @@ def test_callback_registered_on_root_agent() -> None:
         def __init__(self, **kwargs: Any) -> None:
             pass
 
-    class FakeStreamableHTTPConnectionParams:
+    class FakeSseConnectionParams:
         def __init__(self, **kwargs: Any) -> None:
             pass
 
@@ -232,7 +232,7 @@ def test_callback_registered_on_root_agent() -> None:
 
     fake_adk_agents.LlmAgent = FakeLlmAgent
     fake_adk_mcp.McpToolset = FakeMcpToolset
-    fake_adk_mcp_mgr.StreamableHTTPConnectionParams = FakeStreamableHTTPConnectionParams
+    fake_adk_mcp_mgr.SseConnectionParams = FakeSseConnectionParams
     fake_adk_openapi_toolset.OpenAPIToolset = FakeOpenAPIToolset
 
     mods_to_patch = {

@@ -144,7 +144,7 @@ def test_agent_py_has_mcp_toolset_import(
 ) -> None:
     """AC6 — agent.py contains:
     - from google.adk.agents import LlmAgent
-    - McpToolset with StreamableHTTPConnectionParams per mcp_servers entry
+    - McpToolset with SseConnectionParams per mcp_servers entry
     - before_model_callback when guardrails.pii.enabled=True
     """
     spec = load_spec(spec_example_dict)
@@ -154,7 +154,7 @@ def test_agent_py_has_mcp_toolset_import(
 
     assert "from google.adk.agents import LlmAgent" in agent_py
     assert "McpToolset" in agent_py
-    assert "StreamableHTTPConnectionParams" in agent_py
+    assert "SseConnectionParams" in agent_py
     # Two MCP servers in example spec
     assert "ocr_toolset" in agent_py
     assert "rag_toolset" in agent_py

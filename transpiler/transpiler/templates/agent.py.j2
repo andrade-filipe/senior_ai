@@ -34,7 +34,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 {% if http_tools %}
 from google.adk.tools.openapi_tool.openapi_spec_parser.openapi_toolset import OpenAPIToolset
 {% endif %}
@@ -101,7 +101,7 @@ def _build_agent(correlation_id: str) -> LlmAgent:
 
 {% for srv in mcp_servers %}
     {{ srv.name | replace("-", "_") }}_toolset = McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
+        connection_params=SseConnectionParams(
             url=os.environ.get({{ (srv.name.upper().replace("-", "_") + "_MCP_URL") | tojson }}, {{ srv.url | tojson }}),
             headers=_corr_headers,
         ),

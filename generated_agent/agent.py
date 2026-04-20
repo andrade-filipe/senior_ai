@@ -32,7 +32,7 @@ from google.adk.agents import LlmAgent
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.mcp_tool import McpToolset
-from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+from google.adk.tools.mcp_tool.mcp_session_manager import SseConnectionParams
 from google.adk.tools.openapi_tool.openapi_spec_parser.openapi_toolset import OpenAPIToolset
 from security import make_pii_callback
 
@@ -99,7 +99,7 @@ def _build_agent(correlation_id: str) -> LlmAgent:
     _corr_headers = {**_SSE_HEADERS, "X-Correlation-ID": correlation_id}
 
     ocr_toolset = McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
+        connection_params=SseConnectionParams(
             url=os.environ.get("OCR_MCP_URL", "http://ocr-mcp:8001/sse"),
             headers=_corr_headers,
         ),
@@ -107,7 +107,7 @@ def _build_agent(correlation_id: str) -> LlmAgent:
     )
 
     rag_toolset = McpToolset(
-        connection_params=StreamableHTTPConnectionParams(
+        connection_params=SseConnectionParams(
             url=os.environ.get("RAG_MCP_URL", "http://rag-mcp:8002/sse"),
             headers=_corr_headers,
         ),
