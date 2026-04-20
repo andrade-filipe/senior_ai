@@ -123,7 +123,9 @@ def _build_agent(correlation_id: str) -> LlmAgent:
             url=os.environ.get({{ (srv.name.upper().replace("-", "_") + "_MCP_URL") | tojson }}, {{ srv.url | tojson }}),
             headers=_corr_headers,
         ),
-{% if srv.tool_filter is not none %}
+{% if not srv.exposed %}
+        tool_filter=[],  # ADR-0010: server not exposed to the LlmAgent
+{% elif srv.tool_filter is not none %}
         tool_filter={{ srv.tool_filter | tojson }},
 {% endif %}
     )

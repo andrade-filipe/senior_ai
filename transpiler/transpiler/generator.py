@@ -46,6 +46,7 @@ _TEMPLATE_FILES: list[str] = [
     "__init__.py.j2",
     "agent.py.j2",
     "__main__.py.j2",
+    "preocr.py.j2",
     "logging_.py.j2",
     "requirements.txt.j2",
     "Dockerfile.j2",
@@ -57,6 +58,7 @@ _OUTPUT_FILES: list[str] = [
     "__init__.py",
     "agent.py",
     "__main__.py",
+    "preocr.py",
     "logging_.py",
     "requirements.txt",
     "Dockerfile",
@@ -126,6 +128,7 @@ def _context(spec: AgentSpec) -> dict[str, Any]:
             "name": srv.name,
             "url": str(srv.url),
             "tool_filter": list(srv.tool_filter) if srv.tool_filter is not None else None,
+            "exposed": srv.exposed,
         }
         for srv in spec.mcp_servers
     ]

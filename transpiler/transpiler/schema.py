@@ -97,6 +97,15 @@ class McpServerSpec(BaseModel):
         max_length=_MAX_TOOL_FILTER,
         description="Optional list of tool names to expose. None means all tools.",
     )
+    exposed: bool = Field(
+        default=True,
+        description=(
+            "Whether this MCP server's tools are exposed to the LlmAgent. "
+            "When false, the generated agent emits tool_filter=[] — the server "
+            "remains reachable as a public API but the model cannot invoke it. "
+            "Introduced by ADR-0010 for the CLI-orchestrated pre-step pattern."
+        ),
+    )
 
 
 class HttpToolSpec(BaseModel):

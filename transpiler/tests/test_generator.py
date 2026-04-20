@@ -43,7 +43,7 @@ def test_generates_package_files(spec_example_dict: dict[str, Any], tmp_path: Pa
     assert dest.is_dir()
 
     required = {
-        "__init__.py", "agent.py", "__main__.py", "logging_.py",
+        "__init__.py", "agent.py", "__main__.py", "preocr.py", "logging_.py",
         "requirements.txt", "Dockerfile", ".env.example",
     }
     generated = {f.name for f in dest.iterdir()}
