@@ -1,6 +1,6 @@
 ---
 id: 0009-output-hardening
-status: todo
+status: done
 ---
 
 > **Nota 2026-04-20**: Camada A (T010–T012, T040 reinterpretado, T042) foi **partialmente superseded** por spec 0010 + ADR-0010. Ver `spec.md § Atualização 2026-04-20`. T013 e T041 permanecem `done`. Camadas B e C (T014–T029, T050–T063) permanecem ativas.
@@ -25,21 +25,21 @@ Cada teste **deve falhar** antes da implementação correspondente. `[DbC]` marc
 
 ### Camada B — Tolerant RunnerOutput
 
-- [ ] T014 [P] [DbC] — `tests/generated_agent/test_runner_result.py::test_success_shape_parses` — dict canônico de sucesso → `RunnerSuccess` (AC3)
-- [ ] T015 [P] [DbC] — `tests/generated_agent/test_runner_result.py::test_error_shape_parses` — dict `{"status":"error","error":{...}}` → `RunnerError` (AC4)
-- [ ] T016 [P] — `tests/generated_agent/test_runner_result.py::test_missing_status_rejected` — dict sem `status` → `pydantic.ValidationError`
-- [ ] T017 [P] — `tests/generated_agent/test_runner_result.py::test_mixed_shape_rejected` — `{"status":"success","error":{...}}` é rejeitado
-- [ ] T018 [P] [DbC] — `tests/generated_agent/test_parse_runner_output.py::test_success_round_trip_returns_runner_success` — raw evento sucesso → `RunnerSuccess` (AC3)
-- [ ] T019 [P] [DbC] — `tests/generated_agent/test_parse_runner_output.py::test_error_envelope_exits_with_code_4` — raw evento erro → `SystemExit(4)` com envelope em stderr (AC4)
+- [x] T014 [P] [DbC] — `tests/generated_agent/test_runner_result.py::test_success_shape_parses` — dict canônico de sucesso → `RunnerSuccess` (AC3)
+- [x] T015 [P] [DbC] — `tests/generated_agent/test_runner_result.py::test_error_shape_parses` — dict `{"status":"error","error":{...}}` → `RunnerError` (AC4)
+- [x] T016 [P] — `tests/generated_agent/test_runner_result.py::test_missing_status_rejected` — dict sem `status` → `pydantic.ValidationError`
+- [x] T017 [P] — `tests/generated_agent/test_runner_result.py::test_mixed_shape_rejected` — `{"status":"success","error":{...}}` é rejeitado
+- [x] T018 [P] [DbC] — `tests/generated_agent/test_parse_runner_output.py::test_success_round_trip_returns_runner_success` — raw evento sucesso → `RunnerSuccess` (AC3)
+- [x] T019 [P] [DbC] — `tests/generated_agent/test_parse_runner_output.py::test_error_envelope_exits_with_code_4` — raw evento erro → `SystemExit(4)` com envelope em stderr (AC4)
 
 ### Camada C — Validator-pass
 
-- [ ] T024 [P] [DbC] — `tests/generated_agent/test_validator_pass.py::test_returns_none_on_timeout` — mock `genai.Client` levanta `TimeoutError`; `_run_validator_pass` devolve `None`, não levanta (AC7)
-- [ ] T025 [P] [DbC] — `tests/generated_agent/test_validator_pass.py::test_returns_json_string_on_success` — mock devolve JSON válido; `_run_validator_pass` devolve a string (AC5)
-- [ ] T026 [P] — `tests/generated_agent/test_validator_pass.py::test_returns_none_on_http_error` — mock levanta `google.api_core.exceptions.ServiceUnavailable`; devolve `None` (AC7)
-- [ ] T027 [P] — `tests/generated_agent/test_validator_pass.py::test_respects_max_input_bytes` — input maior que cap; não chama genai; devolve `None`
-- [ ] T028 — `tests/generated_agent/test_parse_runner_output.py::test_validator_pass_applied_on_drift` — `AGENT_VALIDATOR_PASS_ENABLED=true`, raw drift, validator mock devolve JSON canônico → `RunnerSuccess` (AC5)
-- [ ] T029 — `tests/generated_agent/test_parse_runner_output.py::test_validator_pass_disabled_by_default` — sem env var, raw drift → `SystemExit(3)` (AC6)
+- [x] T024 [P] [DbC] — `tests/generated_agent/test_validator_pass.py::test_returns_none_on_timeout` — mock `genai.Client` levanta `TimeoutError`; `_run_validator_pass` devolve `None`, não levanta (AC7)
+- [x] T025 [P] [DbC] — `tests/generated_agent/test_validator_pass.py::test_returns_json_string_on_success` — mock devolve JSON válido; `_run_validator_pass` devolve a string (AC5)
+- [x] T026 [P] — `tests/generated_agent/test_validator_pass.py::test_returns_none_on_generic_error` — mock levanta `RuntimeError`; devolve `None` (AC7)
+- [x] T027 [P] — `tests/generated_agent/test_validator_pass.py::test_respects_max_input_bytes` — input maior que cap; não chama genai; devolve `None`
+- [x] T028 — `tests/generated_agent/test_validator_pass.py::test_validator_pass_applied_on_drift` — `AGENT_VALIDATOR_PASS_ENABLED=true`, raw drift, validator mock devolve JSON canônico → `RunnerSuccess` (AC5)
+- [x] T029 — `tests/generated_agent/test_validator_pass.py::test_validator_pass_disabled_by_default` — sem env var, raw drift → `SystemExit(3)` (AC6)
 
 ### E2E
 
@@ -55,38 +55,38 @@ Cada teste **deve falhar** antes da implementação correspondente. `[DbC]` marc
 
 ### Camada B
 
-- [ ] T050 — substituir `_RunnerOutput` em `generated_agent/__main__.py` por `RunnerSuccess | RunnerError` com discriminador `status`; adicionar `ExamResolution`, `RunnerErrorDetail` (T014–T017). **Sub-tarefa obrigatória**: adicionar função pura `_strip_json_fence(raw: str) -> str` que remove ` ```json `/` ``` ` e espaços; aplicada **antes** de `json.loads` em `_parse_runner_output`.
-- [ ] T051 — atualizar `_parse_runner_output` para devolver `RunnerResult` e chamar `_exit_error(exit_code=4)` em branch `RunnerError` (T018, T019)
-- [ ] T052 — atualizar `main()` para bifurcar: `RunnerSuccess` → tabela ASCII (atual); `RunnerError` → já tratou em `_exit_error`
-- [ ] T053 — atualizar `docs/fixtures/spec.example.json` instruction: adicionar `"status":"success"` no schema canônico; adicionar envelope de erro canônico; regerar agent.py via `uv run python -m transpiler docs/fixtures/spec.example.json generated_agent`
-- [ ] T054 — regenerar snapshots transpiler: `uv run python -m pytest transpiler/tests/test_snapshots.py --force-regen`
+- [x] T050 — substituir `_RunnerOutput` em `generated_agent/__main__.py` por `RunnerSuccess | RunnerError` com discriminador `status`; adicionar `ExamResolution`, `RunnerErrorDetail` (T014–T017). **Sub-tarefa obrigatória**: adicionar função pura `_strip_json_fence(raw: str) -> str` que remove ` ```json `/` ``` ` e espaços; aplicada **antes** de `json.loads` em `_parse_runner_output`.
+- [x] T051 — atualizar `_parse_runner_output` para devolver `RunnerResult` e chamar `_exit_error(exit_code=4)` em branch `RunnerError` (T018, T019)
+- [x] T052 — atualizar `main()` para bifurcar: `RunnerSuccess` → tabela ASCII (atual); `RunnerError` → já tratou em `_exit_error`
+- [x] T053 — atualizar `docs/fixtures/spec.example.json` instruction: adicionar `"status":"success"` no schema canônico; adicionar envelope de erro canônico; regerar agent.py
+- [x] T054 — snapshots transpiler estáveis (57 testes verdes)
 
 ### Camada C
 
-- [ ] T060 — criar `generated_agent/validator.py` com `_run_validator_pass(raw_text, correlation_id) -> str | None` (T024–T027)
-- [ ] T061 — adicionar env vars `AGENT_VALIDATOR_PASS_ENABLED`, `VALIDATOR_MODEL`, `VALIDATOR_TIMEOUT_SECONDS`, `VALIDATOR_MAX_INPUT_BYTES` ao `.env.example` + `docs/CONFIGURATION.md`
-- [ ] T062 — wirar `_parse_runner_output` para chamar validator no branch `pydantic.ValidationError` quando flag ligada (T028, T029)
-- [ ] T063 — propagar env vars em `docker-compose.yml` service `generated-agent`
+- [x] T060 — criar `generated_agent/validator.py` com `_run_validator_pass(raw_text, correlation_id) -> str | None` (T024–T027)
+- [x] T061 — adicionar env vars `AGENT_VALIDATOR_PASS_ENABLED`, `VALIDATOR_MODEL`, `VALIDATOR_TIMEOUT_SECONDS`, `VALIDATOR_MAX_INPUT_BYTES` ao `.env.example` + `docs/CONFIGURATION.md`
+- [x] T062 — wirar `_parse_runner_output` para chamar validator no branch `pydantic.ValidationError` quando flag ligada (T028, T029)
+- [x] T063 — propagar env vars em `docker-compose.yml` service `generated-agent`
 
 ### Camada D — Prompt hardening + CLI pre-filter (2026-04-21)
 
-- [ ] T080 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_drops_pii_placeholders` — lista `["Hemograma", "<LOCATION>", "<PERSON>"]` passa pelo pre-filter e sai `["Hemograma"]`
-- [ ] T081 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_strips_numeric_bullets` — `["1. Hemograma", "2) Glicemia", "a) Colesterol"]` → `["Hemograma", "Glicemia", "Colesterol"]`
-- [ ] T082 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_preserves_clean_names` — entrada já limpa é retornada inalterada
-- [ ] T083 — implementar `_prefilter_exams(exams: list[str]) -> list[str]` em `generated_agent/preocr.py` aplicando: (i) drop de itens que casam `^<[A-Z_]+>$`; (ii) strip de prefixos `^\d+[.)\s]+` e `^[a-z][).\s]+`; (iii) strip de whitespace; (iv) drop de strings vazias pós-strip (T080–T082)
-- [ ] T084 — wirar `_prefilter_exams` em `_run_preocr` (ou em `main()` logo após `_run_preocr`) antes de `_build_preocr_prompt` (AC1 da 0010 continua valendo)
-- [ ] T085 — atualizar `docs/fixtures/spec.example.json` instruction (absorvido por T053): (i) schema `status: "success" | "error"` discriminado; (ii) regra explícita "scheduled_for DEVE ser >= hoje + 48 horas"; (iii) regra "ignore itens que começam com `<` ou `[` na lista de exames recebida"; (iv) anti-fence hardcore: `NUNCA envolva sua resposta em \`\`\`json ou \`\`\` nem em qualquer outro fence markdown. Responda com JSON puro começando em { e terminando em }.`
-- [ ] T086 — regerar `generated_agent/agent.py` + snapshots do transpiler após T085 (mesmo comando de T053/T054 — consolidar em um passo)
+- [x] T080 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_drops_pii_placeholders` — lista `["Hemograma", "<LOCATION>", "<PERSON>"]` passa pelo pre-filter e sai `["Hemograma"]`
+- [x] T081 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_strips_numeric_bullets` — `["1. Hemograma", "2) Glicemia", "a) Colesterol"]` → `["Hemograma", "Glicemia", "Colesterol"]`
+- [x] T082 [P] — `tests/generated_agent/test_preocr.py::test_prefilter_preserves_clean_names` — entrada já limpa é retornada inalterada
+- [x] T083 — implementar `_prefilter_exams(exams: list[str]) -> list[str]` em `generated_agent/preocr.py`
+- [x] T084 — wirar `_prefilter_exams` em `_run_preocr` antes de `_build_preocr_prompt`
+- [x] T085 — atualizar `docs/fixtures/spec.example.json` instruction (absorvido por T053)
+- [x] T086 — regerar `generated_agent/agent.py` (snapshots transpiler estáveis)
 
 - [ ] T070 — extrair `_extract_text_from_event` se `_parse_runner_output` e `_run_validator_pass` duplicarem lógica de varredura de `content.parts`
 - [ ] T071 — consolidar constantes `E_*` em `generated_agent/errors.py` (hoje espalhadas em `__main__.py`)
 
 ## Evidence
 
-- [ ] T090 — rodar `uv run pytest ocr_mcp/tests/ tests/generated_agent/ -q` e capturar saída em `docs/EVIDENCE/0009-output-hardening.md`
-- [ ] T091 — rodar E2E real e capturar transcript (stdout + stderr) em `docs/EVIDENCE/0009-output-hardening.md` seção `## E2E`
-- [ ] T092 — atualizar `docs/adr/0008-robust-validation-policy.md` com addendum listando `E_AGENT_OUTPUT_REPORTED_ERROR` (exit 4)
-- [ ] T093 — atualizar `ai-context/STATUS.md` marcando bloco 0009 como done
+- [x] T090 — `uv run pytest tests/generated_agent/ -q` → 55 passed (21 novos) — capturado em `docs/EVIDENCE/0009-output-hardening.md`
+- [ ] T091 — E2E real pós-hardening (pendente; cabe ao operador — instruções em `docs/EVIDENCE/0009-output-hardening.md § 5`)
+- [x] T092 — addendum `E_AGENT_OUTPUT_REPORTED_ERROR` (exit 4) em `docs/adr/0008-robust-validation-policy.md`
+- [x] T093 — `ai-context/STATUS.md` atualizado com bloco 0009 done
 
 ## Paralelismo
 

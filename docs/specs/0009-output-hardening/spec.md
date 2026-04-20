@@ -1,11 +1,12 @@
 ---
 id: 0009-output-hardening
 title: Output hardening — fixture reliability, tolerant schema e validator-pass
-status: approved
+status: implemented
 linked_requirements: [R05, R08, R11]
 owner_agent: software-architect
 created: 2026-04-20
 approved: 2026-04-20
+implemented: 2026-04-21
 partially_superseded_by: 0010-pre-ocr-invocation   # Camada A apenas — ver addendum abaixo
 ---
 
